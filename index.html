@@ -126,7 +126,7 @@
                 <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
                 <span>Reset Panelen</span>
             </button>
-            <button onclick="loadPlantDataFromSheet()" class="px-3 py-1.5 bg-botanic-700 hover:bg-botanic-800 text-white rounded-lg text-xs font-medium transition flex items-center space-x-1.5 shadow-sm">
+            <button onclick="forceReloadSheetAndReset()" class="px-3 py-1.5 bg-botanic-700 hover:bg-botanic-800 text-white rounded-lg text-xs font-medium transition flex items-center space-x-1.5 shadow-sm" title="Herlaad planten uit Sheet">
                 <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
                 <span>Sheet Vernieuwen</span>
             </button>
@@ -277,9 +277,7 @@
             measurementId: "G-GVBR3XRBWR"
         };
 
-        // window.allPlants bevat de BRONDATA uit Google Sheets
         window.allPlants = [];
-        // window.zones bevat enkel LOCATIES, VAKKEN en FORMAAT uit Firebase
         window.zones = [];
         window.panelLayouts = {
             filter: { x: 30, y: 70, w: 320, h: 580, minimized: false },
@@ -308,6 +306,8 @@
         let auth = null;
         let saveTimeout = null;
         let isCloudConnected = false;
+        let cloudDataLoaded = false;
+        let rawSheetCache = null;
 
         window.addEventListener('DOMContentLoaded', async () => {
             applyPanelPositions();
@@ -318,7 +318,7 @@
             // 1. Eerst brondata inladen uit Google Sheet
             await loadPlantDataFromSheet();
 
-            // 2. Daarna verbinden met Firebase voor de vakken/locaties
+            // 2. Daarna verbinden met Firebase om posities/vakken op te halen
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
@@ -332,19 +332,22 @@
                 onSnapshot(stateDocRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
-                        if (data.zones && data.zones.length > 0) {
-                            window.zones = data.zones;
-                        }
                         if (data.panelLayouts) {
                             window.panelLayouts = data.panelLayouts;
                             applyPanelPositions();
                         }
-                        renderDesignerCanvas();
-                        renderZoneManagerPanel();
-                        updateCloudStatus('synced', 'In jouw Firebase cloud opgeslagen');
+                        if (data.zones && data.zones.length > 0) {
+                            // Merge cloud zones met de verse Google Sheet plant-ID's en objecten
+                            mergeCloudZonesWithSheetData(data.zones);
+                        }
                     } else {
+                        // Geen cloud data aanwezig, sla de huidige initiële staat op
                         window.saveState();
                     }
+                    cloudDataLoaded = true;
+                    renderDesignerCanvas();
+                    renderZoneManagerPanel();
+                    updateCloudStatus('synced', 'In jouw Firebase cloud opgeslagen');
                 }, (error) => {
                     console.warn("Firestore luisteraar waarschuwing:", error);
                     updateCloudStatus('local', `Lokaal (Firestore fout: ${error.code || 'permission-denied'})`);
@@ -359,11 +362,48 @@
         });
 
         function fallbackToLocalStorage() {
-            window.zones = JSON.parse(localStorage.getItem('garden_zones')) || window.zones;
-            window.panelLayouts = JSON.parse(localStorage.getItem('garden_panels_layout')) || window.panelLayouts;
-            applyPanelPositions();
+            const localZones = JSON.parse(localStorage.getItem('garden_zones'));
+            if (localZones && localZones.length > 0) {
+                mergeCloudZonesWithSheetData(localZones);
+            }
+            const localPanels = JSON.parse(localStorage.getItem('garden_panels_layout'));
+            if (localPanels) {
+                window.panelLayouts = localPanels;
+                applyPanelPositions();
+            }
             renderDesignerCanvas();
             renderZoneManagerPanel();
+        }
+
+        function mergeCloudZonesWithSheetData(cloudZones) {
+            // Zorg dat plantId's in cloud-zones gekoppeld blijven aan de actuele planten uit window.allPlants
+            window.zones = cloudZones.map(cz => {
+                // Controleer of de planten in dit vak nog matchen met actuele window.allPlants op naam of ID
+                const updatedPlants = (cz.plants || []).map(pInst => {
+                    const foundDirect = window.allPlants.find(p => p.id === pInst.plantId);
+                    if (foundDirect) return pInst;
+
+                    // Zoek op naam als plantId gewijzigd is
+                    if (pInst.plantName) {
+                        const foundByName = window.allPlants.find(p => p.name.toLowerCase() === pInst.plantName.toLowerCase());
+                        if (foundByName) {
+                            return { ...pInst, plantId: foundByName.id };
+                        }
+                    }
+                    return pInst;
+                }).filter(pInst => window.allPlants.some(p => p.id === pInst.plantId));
+
+                return {
+                    ...cz,
+                    plants: updatedPlants
+                };
+            });
+        }
+
+        window.forceReloadSheetAndReset = async function() {
+            localStorage.removeItem('garden_zones');
+            await loadPlantDataFromSheet();
+            window.saveState();
         }
 
         function updateCloudStatus(status, text) {
@@ -386,7 +426,6 @@
         }
 
         window.saveState = function() {
-            // Firebase bewaart ALLEEN vak-coördinaten, vakgrootte, en de unieke plantId + positie
             localStorage.setItem('garden_zones', JSON.stringify(window.zones));
             localStorage.setItem('garden_panels_layout', JSON.stringify(window.panelLayouts));
 
@@ -407,7 +446,7 @@
                     console.warn("Cloud save warning (saved locally):", e.message);
                     updateCloudStatus('local', 'Lokaal opgeslagen');
                 }
-            }, 500);
+            }, 600);
         }
 
         // --- Viewport & Canvas Controls ---
@@ -636,7 +675,7 @@
             e.preventDefault();
         }
 
-        // --- ENKEL PLANTENDATA OPHALEN UIT GOOGLE SHEETS ---
+        // --- GOOGLE SHEETS DATA LADEN ---
         window.loadPlantDataFromSheet = function() {
             return new Promise((resolve) => {
                 const statusEl = document.getElementById('sheet-status');
@@ -681,7 +720,6 @@
                 return;
             }
 
-            // Exclusieve Google Sheet plantendatabase vullen
             window.allPlants = [];
             let csvZonesMap = {};
 
@@ -700,7 +738,6 @@
                     zoneName = 'Wenslijst';
                 }
 
-                // Eenduidige plant-ID genereren op basis van naam of index
                 const plantId = 'plant-' + (row['ID'] || index);
 
                 const plantObj = {
@@ -721,7 +758,7 @@
                 csvZonesMap[zoneName].push(plantObj);
             });
 
-            // Als er nog géén vakken bestaan in Firebase/lokale opslag, maken we de initiële vakken aan
+            // Als er nog géén zones zijn ingeladen (of eerste start), bouw ze op basis van de sheet kolommen
             if (!window.zones || window.zones.length === 0) {
                 let initialZones = [];
                 let startX = 100;
@@ -732,8 +769,9 @@
                     let zPlants = csvZonesMap[zName].map((p, pIdx) => ({
                         instanceId: 'inst-' + zIndex + '-' + pIdx,
                         plantId: p.id,
-                        x: 40 + (pIdx % 4) * 80,
-                        y: 50 + Math.floor(pIdx / 4) * 70,
+                        plantName: p.name,
+                        x: 40 + (pIdx % 4) * 85,
+                        y: 50 + Math.floor(pIdx / 4) * 75,
                         size: 26
                     }));
 
@@ -759,6 +797,33 @@
                 });
 
                 window.zones = initialZones;
+            } else {
+                // Als zones al bestonden (bijv. uit localStorage of Firebase), controleer of elk vak uit de sheet erin staat
+                Object.keys(csvZonesMap).forEach(zName => {
+                    let existingZone = window.zones.find(z => z.name.toLowerCase() === zName.toLowerCase());
+                    if (!existingZone) {
+                        // Vak toevoegen als deze nieuw is in de sheet
+                        let zPlants = csvZonesMap[zName].map((p, pIdx) => ({
+                            instanceId: 'inst-' + Math.random().toString(36).substring(2, 9),
+                            plantId: p.id,
+                            plantName: p.name,
+                            x: 40 + (pIdx % 4) * 85,
+                            y: 50 + Math.floor(pIdx / 4) * 75,
+                            size: 26
+                        }));
+                        window.zones.push({
+                            id: 'zone-' + Math.random().toString(36).substring(2, 7),
+                            name: zName,
+                            x: 100 + (window.zones.length % 3) * 460,
+                            y: 100 + Math.floor(window.zones.length / 3) * 400,
+                            w: 420,
+                            h: 360,
+                            color: 'bg-green-50/95',
+                            visible: true,
+                            plants: zPlants
+                        });
+                    }
+                });
             }
 
             if (statusEl) statusEl.innerText = `${window.allPlants.length} planten geladen uit Google Sheet.`;
@@ -897,8 +962,7 @@
                 `;
 
                 zone.plants.forEach(plantInst => {
-                    // Zoek ALTIJD de plantgegevens op in window.allPlants (uit Google Sheet)
-                    const plantData = window.allPlants.find(p => p.id === plantInst.plantId) || { name: 'Onbekend', color: 'groen' };
+                    const plantData = window.allPlants.find(p => p.id === plantInst.plantId) || window.allPlants.find(p => p.name.toLowerCase() === (plantInst.plantName || '').toLowerCase()) || { name: plantInst.plantName || 'Onbekend', color: 'groen' };
                     const colStyle = getPlantColorStyle(plantData.color);
                     const size = plantInst.size || 26;
 
@@ -906,8 +970,8 @@
                         <div class="plant-dot absolute group cursor-pointer flex items-center justify-center transition-transform hover:scale-110"
                              style="left: ${plantInst.x - size/2}px; top: ${plantInst.y - size/2}px; width: ${size}px; height: ${size}px;"
                              onmousedown="initPlantDrag(event, '${zone.id}', '${plantInst.instanceId}')"
-                             onclick="openPlantDetail('${plantData.id}', '${zone.id}', '${plantInst.instanceId}')"
-                             title="${plantData.name} - Klik voor info uit Google Sheet">
+                             onclick="openPlantDetail('${plantData.id || plantInst.plantId}', '${zone.id}', '${plantInst.instanceId}')"
+                             title="${plantData.name} - Klik voor info">
                              
                             <div class="w-full h-full rounded-full shadow-md flex items-center justify-center text-[10px] font-bold border-2"
                                  style="background-color: ${colStyle.bg}; color: ${colStyle.text}; border-color: ${colStyle.border};">
@@ -962,8 +1026,7 @@
                 pHtml = `<p class="text-xs text-slate-400 text-center py-4">Geen planten in dit vak.</p>`;
             } else {
                 zone.plants.forEach(plantInst => {
-                    // Haal plantkenmerken uitsluitend op uit de Google Sheet data
-                    const plantData = window.allPlants.find(p => p.id === plantInst.plantId) || { name: 'Onbekend', color: 'groen' };
+                    const plantData = window.allPlants.find(p => p.id === plantInst.plantId) || window.allPlants.find(p => p.name.toLowerCase() === (plantInst.plantName || '').toLowerCase()) || { name: plantInst.plantName || 'Onbekend', color: 'groen', type: 'Vaste plant' };
                     const colStyle = getPlantColorStyle(plantData.color);
 
                     pHtml += `
@@ -1018,10 +1081,13 @@
             if (!window.selectedPlantCatalogId) return;
 
             const zone = window.zones.find(z => z.id === window.selectedZoneId);
-            if (zone) {
+            const plantObj = window.allPlants.find(p => p.id === window.selectedPlantCatalogId);
+
+            if (zone && plantObj) {
                 zone.plants.push({
                     instanceId: 'inst-' + Math.random().toString(36).substring(2, 9),
-                    plantId: window.selectedPlantCatalogId,
+                    plantId: plantObj.id,
+                    plantName: plantObj.name,
                     x: Math.floor(Math.random() * (zone.w - 80)) + 40,
                     y: Math.floor(Math.random() * (zone.h - 80)) + 40,
                     size: 26
@@ -1050,9 +1116,8 @@
             }
         }
 
-        // --- DETAILS OPHALEN EXCLUSIEF UIT GOOGLE SHEET DATA ---
         window.openPlantDetail = function(plantId, zoneId = null, instanceId = null) {
-            const plant = window.allPlants.find(p => p.id === plantId);
+            const plant = window.allPlants.find(p => p.id === plantId) || window.allPlants[0];
             if (!plant) return;
 
             if (zoneId) {
