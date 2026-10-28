@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beplantingsplan & Tuinkaart Interactive Studio</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PapaParse voor live Google Sheet CSV import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        botanic: {
+                            50: '#f4f7f4',
+                            100: '#e3ebe3',
+                            200: '#c6d8c6',
+                            300: '#9ebf9f',
+                            400: '#729f74',
+                            500: '#528354',
+                            600: '#3e6840',
+                            700: '#335335',
+                            800: '#2b432c',
+                            900: '#243825',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8faf8;
+            user-select: none;
+        }
+        .canvas-grid {
+            background-size: 20px 20px;
+            background-image: radial-gradient(circle, #cbd5e1 1.5px, transparent 1.5px);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .designer-zone {
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .designer-zone:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .resize-handle {
+            width: 14px;
+            height: 14px;
+            background-color: #ffffff;
+            border: 2px solid #528354;
+            border-radius: 4px;
+            position: absolute;
+            right: -5px;
+            bottom: -5px;
+            cursor: se-resize;
+            z-index: 25;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-botanic-800 text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-botanic-600 rounded-lg">
+                        <i data-lucide="sprout" class="w-6 h-6 text-emerald-300"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="font-bold text-lg leading-tight">Tuinbeplantingsplan & Kaart Studio</h1>
+                            <span id="sheet-sync-status" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3 h-3 animate-spin"></i> Live Sheet
+                            </span>
+                        </div>
+                        <p class="text-xs text-botanic-200">Ontwerp & Live Beplantingsbeheer via Google Sheets</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="flex space-x-1 sm:space-x-2 bg-botanic-900/50 p-1 rounded-xl">
+                    <button id="tab-designer" onclick="switchView('designer')" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition bg-botanic-600 text-white shadow-sm">
+                        <i data-lucide="layout" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Tuinkaart Ontwerper</span>
+                    </button>
+                    <button id="tab-map" onclick="switchView('map')" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium text-botanic-200 hover:text-white transition">
+                        <i data-lucide="map" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Overzichtskaart</span>
+                    </button>
+                    <button id="tab-calendar" onclick="switchView('calendar')" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium text-botanic-200 hover:text-white transition">
+                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Bloeikalender</span>
+                    </button>
+                    <button id="tab-table" onclick="switchView('table')" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium text-botanic-200 hover:text-white transition">
+                        <i data-lucide="table" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Plantenlijst</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <div class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row gap-6">
+
+        <!-- Sidebar / Filter Panel -->
+        <aside class="w-full md:w-80 flex-shrink-0 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 space-y-5 h-fit sticky top-20 z-20">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center space-x-2 text-botanic-800 font-semibold">
+                    <i data-lucide="sliders-horizontal" class="w-5 h-5"></i>
+                    <span>Filters</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="loadPlantDataFromSheet()" title="Ververs gegevens uit Google Sheet" class="text-xs text-botanic-600 hover:text-botanic-800 font-medium transition flex items-center gap-1 bg-botanic-50 px-2 py-1 rounded-lg">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Ververs
+                    </button>
+                    <button onclick="resetFilters()" class="text-xs text-slate-500 hover:text-slate-800 font-medium transition flex items-center gap-1">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search input -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Zoek plant</label>
+                <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                    <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Naam, bijzonderheid..." class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-botanic-500 focus:bg-white transition">
+                </div>
+            </div>
+
+            <!-- Filter: Bloeimaand -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Bloeimaand</label>
+                <div id="month-buttons-container" class="grid grid-cols-5 gap-1 text-xs">
+                    <!-- Dynamic Month Buttons -->
+                </div>
+            </div>
+
+            <!-- Filter: Bloemkleur -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Bloemkleur</label>
+                <select id="filter-color" onchange="applyFilters()" class="w-full p-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-botanic-500">
+                    <option value="">Alle kleuren</option>
+                    <option value="Geel">Geel</option>
+                    <option value="Paars">Paars</option>
+                    <option value="Roze">Roze</option>
+                    <option value="Wit">Wit</option>
+                    <option value="Blauw">Blauw</option>
+                    <option value="Rood">Rood</option>
+                    <option value="Oranje">Oranje</option>
+                    <option value="Gras">Gras (Groen/Bruin)</option>
+                    <option value="Grijs">Grijs / Onopvallend</option>
+                </select>
+            </div>
+
+            <!-- Filter: Lichtbehoefte -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Lichtbehoefte</label>
+                <select id="filter-light" onchange="applyFilters()" class="w-full p-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-botanic-500">
+                    <option value="">Alle lichtniveaus</option>
+                    <option value="Zon">Zon</option>
+                    <option value="Halfzon">Halfzon / Halfschaduw</option>
+                    <option value="Schaduw">Schaduw</option>
+                </select>
+            </div>
+
+            <!-- Filter: Type -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Plant Type</label>
+                <select id="filter-type" onchange="applyFilters()" class="w-full p-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-botanic-500">
+                    <option value="">Alle types</option>
+                    <option value="Primair">Primair (Blikvanger)</option>
+                    <option value="Matrix">Matrix (Basis/Vul)</option>
+                    <option value="Strooi">Strooi (Accent)</option>
+                </select>
+            </div>
+
+            <!-- Filter: Heb ik? -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Status in Bezit</label>
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                    <button id="have-all" onclick="setHaveFilter('all')" class="have-btn py-1.5 rounded-lg border border-botanic-500 bg-botanic-50 text-botanic-700 font-medium">Alles</button>
+                    <button id="have-yes" onclick="setHaveFilter('ja')" class="have-btn py-1.5 rounded-lg border border-slate-200 font-medium hover:bg-slate-50">Heb ik (Ja)</button>
+                    <button id="have-no" onclick="setHaveFilter('nee')" class="have-btn py-1.5 rounded-lg border border-slate-200 font-medium hover:bg-slate-50">Nog niet (Nee)</button>
+                </div>
+            </div>
+
+            <!-- Filter: Insecten -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Ecologie / Insecten</label>
+                <div class="flex items-center gap-4 text-xs font-medium">
+                    <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" id="filter-bee" onchange="applyFilters()" class="rounded text-botanic-600 focus:ring-botanic-500 w-4 h-4">
+                        <span class="flex items-center gap-1"><i data-lucide="bee" class="w-3.5 h-3.5 text-amber-500"></i> Bijen (B)</span>
+                    </label>
+                    <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" id="filter-butterfly" onchange="applyFilters()" class="rounded text-botanic-600 focus:ring-botanic-500 w-4 h-4">
+                        <span class="flex items-center gap-1"><i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-500"></i> Vlinders (V)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Counter Badge -->
+            <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+                <span>Resultaten:</span>
+                <span id="result-count" class="font-bold text-botanic-700 bg-botanic-100 px-2 py-0.5 rounded-full">Laden...</span>
+            </div>
+        </aside>
+
+        <!-- Main View Area -->
+        <main class="flex-grow flex flex-col min-w-0">
+
+            <!-- 0. TUINKAART DESIGNER -->
+            <div id="view-designer" class="space-y-4">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                        <h2 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="pen-tool" class="w-5 h-5 text-botanic-600"></i> Interactieve Tuinkaart Ontwerper
+                        </h2>
+                        <p class="text-xs text-slate-500">Maak vakken aan, sleep ze over het canvas, pas afmetingen aan, zet vakken aan/uit en koppel planten direct aan locaties.</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <!-- Canvas Size Selector -->
+                        <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs">
+                            <i data-lucide="maximize-2" class="w-3.5 h-3.5 text-slate-500 ml-1"></i>
+                            <span class="text-slate-600 font-medium">Veldgrootte:</span>
+                            <button onclick="setCanvasSize(500, 500)" class="px-2 py-0.5 rounded-lg text-[11px] font-semibold hover:bg-white text-slate-700 transition">Standaard</button>
+                            <button onclick="setCanvasSize(800, 650)" class="px-2 py-0.5 rounded-lg text-[11px] font-semibold hover:bg-white text-slate-700 transition">Groot</button>
+                            <button onclick="setCanvasSize(1200, 850)" class="px-2 py-0.5 rounded-lg text-[11px] font-semibold hover:bg-white text-slate-700 transition">Extra Groot</button>
+                        </div>
+                        <button onclick="openAddZoneModal()" class="px-3 py-1.5 bg-botanic-600 hover:bg-botanic-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i> Nieuw Vak
+                        </button>
+                        <button onclick="resetZoneLayout()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition">
+                            Herstel
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Canvas + Sidebar -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <!-- Canvas Area -->
+                    <div class="lg:col-span-2 bg-slate-200 p-4 rounded-2xl border border-slate-300 canvas-grid relative overflow-auto max-h-[750px]" id="canvas-container">
+                        <div class="sticky top-0 left-0 inline-flex bg-white/90 backdrop-blur-xs px-3 py-1 rounded-lg border border-slate-200 text-[11px] font-medium text-slate-600 shadow-xs z-30 items-center gap-2 mb-2">
+                            <i data-lucide="move" class="w-3.5 h-3.5 text-slate-400"></i> Sleep vakken • Gebruik hoek om te vergroten • Klik op oog-icoon om vakken te verbergen/tonen
+                        </div>
+
+                        <!-- Rendered Interactive Zones Container -->
+                        <div id="designer-canvas" class="relative min-h-[500px] transition-all duration-300" style="width: 100%; height: 500px;">
+                            <!-- Dynamic interactive zones rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Designer Side Panel -->
+                    <div class="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col h-[650px]">
+                        <!-- Zone Manager & Visibility List -->
+                        <div class="pb-3 border-b border-slate-100 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                                    <i data-lucide="layers" class="w-4 h-4 text-botanic-600"></i> Vakken Beheer & Zichtbaarheid
+                                </h3>
+                                <button onclick="toggleAllZonesVisibility()" class="text-[11px] font-medium text-botanic-600 hover:text-botanic-800">
+                                    Alles aan/uit
+                                </button>
+                            </div>
+                            <div id="zone-visibility-list" class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto custom-scrollbar p-1 bg-slate-50 rounded-xl border border-slate-100 text-[11px]">
+                                <!-- Dynamic zone toggle badges -->
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center py-3 border-b border-slate-100">
+                            <div>
+                                <h3 id="designer-zone-title" class="font-bold text-slate-800 text-base truncate">Selecteer een vak op het canvas</h3>
+                                <p class="text-xs text-slate-500">Beheer beplanting in het geselecteerde vak.</p>
+                            </div>
+                            <div id="zone-actions" class="hidden flex items-center gap-1">
+                                <button id="btn-toggle-selected-zone" onclick="toggleSelectedZoneVisibility()" class="p-1.5 text-slate-500 hover:text-botanic-600 rounded-lg hover:bg-slate-100 transition" title="Zichtbaarheid aan/uit">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="editSelectedZone()" class="p-1.5 text-slate-500 hover:text-botanic-600 rounded-lg hover:bg-slate-100 transition" title="Vak bewerken">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteSelectedZone()" class="p-1.5 text-slate-500 hover:text-red-600 rounded-lg hover:bg-slate-100 transition" title="Vak verwijderen">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="designer-zone-plants" class="flex-grow overflow-y-auto custom-scrollbar py-3 space-y-2 pr-1">
+                            <!-- Zone plants listed here -->
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100">
+                            <button id="btn-add-plant-to-zone" onclick="openAssignPlantModal()" class="hidden w-full py-2 bg-botanic-600 hover:bg-botanic-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition">
+                                <i data-lucide="plus" class="w-4 h-4"></i> Plant Toewijzen aan Vak
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 1. GARDEN MAP OVERZICHT VIEW -->
+            <div id="view-map" class="hidden space-y-4">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-slate-800">Tuin Plattegrond & Visualisatie</h2>
+                        <p class="text-xs text-slate-500">Bekijk de tuin op basis van je actieve/zichtbare vakken en beplanting.</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> In bezit</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span> Nog aanschaffen</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="bg-slate-100 p-4 rounded-2xl border border-slate-200 canvas-grid relative overflow-auto max-h-[600px]">
+                        <div id="overview-map-canvas" class="relative min-h-[440px] transition-all duration-300" style="width: 100%; height: 500px;">
+                            <!-- Dynamic zone overview cards -->
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-slate-200/80 p-5 flex flex-col h-[480px]">
+                        <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+                            <div>
+                                <h3 id="selected-zone-title" class="font-bold text-slate-800 text-lg">Geselecteerd Vak: Alle Vakken</h3>
+                                <p id="selected-zone-subtitle" class="text-xs text-slate-500">Klik op een vak op de kaart om te filteren op specifieke tuinlocaties.</p>
+                            </div>
+                            <button onclick="selectZone(null)" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-lg font-medium transition">Toon alles</button>
+                        </div>
+
+                        <div id="zone-plants-list" class="flex-grow overflow-y-auto custom-scrollbar py-4 space-y-3 pr-1">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. BLOEIKALENDER MATRIX VIEW -->
+            <div id="view-calendar" class="hidden space-y-4">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
+                    <h2 class="font-bold text-slate-800">Bloeikalender Matrix</h2>
+                    <p class="text-xs text-slate-500">Visueel overzicht van de bloeiperiodes (Maand 3 t/m 11) van de gefilterde planten uit Google Sheets.</p>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse min-w-[700px]">
+                            <thead>
+                                <tr class="bg-botanic-800 text-white text-xs uppercase tracking-wider">
+                                    <th class="py-3 px-4 font-semibold sticky left-0 bg-botanic-800 z-10 w-64">Plantnaam</th>
+                                    <th class="py-3 px-2 text-center w-12">M3</th>
+                                    <th class="py-3 px-2 text-center w-12">M4</th>
+                                    <th class="py-3 px-2 text-center w-12">M5</th>
+                                    <th class="py-3 px-2 text-center w-12 bg-botanic-700">M6</th>
+                                    <th class="py-3 px-2 text-center w-12 bg-botanic-700">M7</th>
+                                    <th class="py-3 px-2 text-center w-12 bg-botanic-700">M8</th>
+                                    <th class="py-3 px-2 text-center w-12 bg-botanic-700">M9</th>
+                                    <th class="py-3 px-2 text-center w-12">M10</th>
+                                    <th class="py-3 px-2 text-center w-12">M11</th>
+                                </tr>
+                            </thead>
+                            <tbody id="calendar-table-body" class="divide-y divide-slate-100 text-xs">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. TABLE / LIST VIEW -->
+            <div id="view-table" class="hidden space-y-4">
+                <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex justify-between items-center">
+                    <div>
+                        <h2 class="font-bold text-slate-800">Volledige Plantenlijst (Google Sheet Live Data)</h2>
+                        <p class="text-xs text-slate-500">Doorzoekbare tabel synchroniserend met de Google Sheets dataset.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse min-w-[1000px]">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
+                                    <th class="p-3">Naam</th>
+                                    <th class="p-3">Vak</th>
+                                    <th class="p-3">Locatie/Coörd.</th>
+                                    <th class="p-3">Type</th>
+                                    <th class="p-3">Kleur</th>
+                                    <th class="p-3">Bloei</th>
+                                    <th class="p-3">Licht</th>
+                                    <th class="p-3">B/V</th>
+                                    <th class="p-3">Heb ik?</th>
+                                    <th class="p-3">Actie</th>
+                                </tr>
+                            </thead>
+                            <tbody id="full-table-body" class="divide-y divide-slate-100 text-xs">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modal: Add/Edit Zone -->
+    <div id="zone-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h3 id="zone-modal-title" class="font-bold text-lg text-slate-900">Nieuw Tuinvak Toevoegen</h3>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-600 mb-1">Naam van het vak</label>
+                    <input type="text" id="input-zone-name" placeholder="bijv. Rozenborder, Schaduwhoek" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-botanic-500">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-600 mb-1">Kleur / Stijl</label>
+                    <select id="input-zone-color" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-botanic-500">
+                        <option value="emerald">Groen (Standaard)</option>
+                        <option value="amber">Geel / Warm</option>
+                        <option value="red">Rood / Fruit</option>
+                        <option value="sky">Blauw / Vocht</option>
+                        <option value="purple">Paars / Schaduw</option>
+                        <option value="orange">Oranje / Herfst</option>
+                        <option value="teal">Teal / Varens</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-600 mb-1">Breedte (px)</label>
+                        <input type="number" id="input-zone-w" value="180" min="80" max="400" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-600 mb-1">Hoogte (px)</label>
+                        <input type="number" id="input-zone-h" value="110" min="60" max="400" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button onclick="closeZoneModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Annuleren</button>
+                <button onclick="saveZone()" class="px-4 py-2 bg-botanic-600 hover:bg-botanic-700 text-white rounded-xl text-xs font-semibold">Opslaan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Assign Plant to Zone -->
+    <div id="assign-plant-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h3 class="font-bold text-lg text-slate-900">Plant Toewijzen aan Vak</h3>
+            <p class="text-xs text-slate-500">Kies een bestaande plant om toe te wijzen aan dit vak, en geef eventueel een specifieke locatie/coördinaat op.</p>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-600 mb-1">Selecteer Plant</label>
+                    <select id="input-assign-plant-id" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-botanic-500">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-600 mb-1">Specifieke Locatie / Positie in vak</label>
+                    <input type="text" id="input-assign-location" placeholder="bijv. Linksboven, Raster A1, Achterin" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-botanic-500">
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button onclick="closeAssignPlantModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">Annuleren</button>
+                <button onclick="savePlantAssignment()" class="px-4 py-2 bg-botanic-600 hover:bg-botanic-700 text-white rounded-xl text-xs font-semibold">Toewijzen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Plant Details -->
+    <div id="plant-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <button onclick="closeModal()" class="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <!-- Modal Header -->
+            <div class="flex items-start gap-3">
+                <div id="modal-color-badge" class="w-5 h-5 rounded-full mt-1 flex-shrink-0 border border-slate-200"></div>
+                <div>
+                    <span id="modal-type" class="text-xs font-bold uppercase tracking-wider text-botanic-600">Type</span>
+                    <h3 id="modal-name" class="font-bold text-xl text-slate-900 leading-snug">Plantnaam</h3>
+                </div>
+            </div>
+
+            <!-- Specificaties Grid -->
+            <div class="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div>
+                    <span class="text-slate-400 block mb-0.5">Vak / Locatie:</span>
+                    <span id="modal-vak" class="font-semibold text-slate-700"></span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block mb-0.5">Positie / Raster:</span>
+                    <span id="modal-locatie" class="font-semibold text-slate-700"></span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block mb-0.5">Bloeimaanden:</span>
+                    <span id="modal-bloei" class="font-semibold text-slate-700"></span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block mb-0.5">Hoogte:</span>
+                    <span id="modal-hoogte" class="font-semibold text-slate-700"></span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block mb-0.5">Lichtbehoefte:</span>
+                    <span id="modal-licht" class="font-semibold text-slate-700"></span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block mb-0.5">Droogtetolerantie:</span>
+                    <span id="modal-droog" class="font-semibold text-slate-700"></span>
+                </div>
+            </div>
+
+            <!-- Extra info -->
+            <div class="space-y-3 text-xs">
+                <div>
+                    <span class="font-bold text-slate-700 block mb-1">Bijzonderheden:</span>
+                    <p id="modal-bijzonderheden" class="text-slate-600 leading-relaxed bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/60"></p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <span class="font-bold text-slate-700 block mb-1">Aankooplocatie (Waar):</span>
+                        <span id="modal-waar" class="text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg inline-block"></span>
+                    </div>
+                    <div>
+                        <span class="font-bold text-slate-700 block mb-1">In Bezit:</span>
+                        <span id="modal-hebik" class="font-semibold px-2.5 py-1 rounded-lg inline-block"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <span class="font-bold text-slate-700 block mb-1">Ecologische waarde:</span>
+                    <div id="modal-eco" class="flex gap-2"></div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="closeModal()" class="px-5 py-2 bg-botanic-600 hover:bg-botanic-700 text-white rounded-xl text-xs font-semibold transition shadow-sm">
+                    Sluiten
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DATASET & LOGIC SCRIPT -->
+    <script>
+        // Google Sheet CSV URL
+        const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQpPx2dcL_HkAnxs_PhSg582oFExs3fyQsFMsCZPzKG-NfYnuRYRiVNjEMGXDNesr1aYqTXBZvTn11I/pub?output=csv";
+
+        // Dynamic Plant Data Array
+        let plantData = [];
+
+        // Initial Zones Layout Configuration
+        const defaultZones = [
+            { id: 'Peer', name: 'Peer', x: 20, y: 20, w: 220, h: 110, color: 'amber', active: true },
+            { id: 'Appel', name: 'Appel', x: 260, y: 20, w: 220, h: 110, color: 'red', active: true },
+            { id: 'Frozen fingers', name: 'Frozen fingers', x: 20, y: 150, w: 145, h: 120, color: 'sky', active: true },
+            { id: 'Venkel', name: 'Venkel', x: 180, y: 150, w: 145, h: 120, color: 'emerald', active: true },
+            { id: 'Esdoorn', name: 'Esdoorn', x: 340, y: 150, w: 145, h: 120, color: 'orange', active: true },
+            { id: 'Vijver', name: 'Vijver', x: 20, y: 290, w: 220, h: 110, color: 'sky', active: true },
+            { id: 'Tongvaren', name: 'Tongvaren', x: 260, y: 290, w: 220, h: 110, color: 'teal', active: true },
+            { id: 'Algemeen', name: 'Overige Borders / Vrij', x: 20, y: 415, w: 460, h: 75, color: 'purple', active: true }
+        ];
+
+        let gardenZones = JSON.parse(localStorage.getItem('garden_zones_layout')) || defaultZones;
+        gardenZones.forEach(z => { if (z.active === undefined) z.active = true; });
+
+        let canvasDimensions = JSON.parse(localStorage.getItem('garden_canvas_dim')) || { w: 500, h: 500 };
+
+        // State variables
+        let activeView = 'designer';
+        let selectedZone = null;
+        let selectedMonth = null;
+        let haveFilter = 'all';
+        let editingZoneId = null;
+        let activeDragZone = null;
+        let activeResizeZone = null;
+        let dragOffsetX = 0, dragOffsetY = 0;
+        let resizeStartW = 0, resizeStartH = 0, resizeStartX = 0, resizeStartY = 0;
+
+        // Color Styles for Canvas
+        const colorStyles = {
+            emerald: { bg: 'bg-emerald-100/90', border: 'border-emerald-400', text: 'text-emerald-900', badge: 'bg-emerald-200 text-emerald-800' },
+            amber: { bg: 'bg-amber-100/90', border: 'border-amber-400', text: 'text-amber-900', badge: 'bg-amber-200 text-amber-800' },
+            red: { bg: 'bg-red-100/90', border: 'border-red-400', text: 'text-red-900', badge: 'bg-red-200 text-red-800' },
+            sky: { bg: 'bg-sky-100/90', border: 'border-sky-400', text: 'text-sky-900', badge: 'bg-sky-200 text-sky-800' },
+            purple: { bg: 'bg-purple-100/90', border: 'border-purple-400', text: 'text-purple-900', badge: 'bg-purple-200 text-purple-800' },
+            orange: { bg: 'bg-orange-100/90', border: 'border-orange-400', text: 'text-orange-900', badge: 'bg-orange-200 text-orange-800' },
+            teal: { bg: 'bg-teal-100/90', border: 'border-teal-400', text: 'text-teal-900', badge: 'bg-teal-200 text-teal-800' }
+        };
+
+        function getColorBadgeClass(color) {
+            switch((color || '').toLowerCase()) {
+                case 'geel': return 'bg-amber-400 border-amber-500';
+                case 'paars': return 'bg-purple-500 border-purple-600';
+                case 'roze': return 'bg-pink-400 border-pink-500';
+                case 'wit': return 'bg-slate-100 border-slate-300';
+                case 'blauw': return 'bg-blue-500 border-blue-600';
+                case 'rood': return 'bg-rose-600 border-rose-700';
+                case 'oranje': return 'bg-orange-500 border-orange-600';
+                case 'gras': return 'bg-emerald-600 border-emerald-700';
+                case 'grijs': return 'bg-slate-400 border-slate-500';
+                default: return 'bg-slate-300 border-slate-400';
+            }
+        }
+
+        // Fetch Live Data from Google Sheets
+        function loadPlantDataFromSheet() {
+            const statusBadge = document.getElementById('sheet-sync-status');
+            if (statusBadge) {
+                statusBadge.innerHTML = `<i data-lucide="refresh-cw" class="w-3 h-3 animate-spin"></i> Synchroniseren...`;
+            }
+
+            Papa.parse(GOOGLE_SHEET_CSV_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    plantData = results.data.map((row, index) => {
+                        // Parse blooming months (e.g. "6, 7, 8" -> [6, 7, 8])
+                        let bloeiArray = [];
+                        const bloeiVal = row['Bloeiperiode'] || row['bloei'] || row['Bloei'] || '';
+                        if (typeof bloeiVal === 'string' && bloeiVal.trim() !== '') {
+                            bloeiArray = bloeiVal.split(/[,;\s]+/).map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+                        }
+
+                        return {
+                            id: index + 1,
+                            naam: row['Naam'] || row['naam'] || 'Onbekende Plant',
+                            type: row['Type'] || row['type'] || 'Matrix',
+                            droog: row['Droog'] || row['droog'] || '-',
+                            licht: row['Licht'] || row['licht'] || 'Zon',
+                            hoogte: row['Hoogte'] || row['hoogte'] || '-',
+                            kleur: row['Kleur'] || row['kleur'] || 'Groen',
+                            bloei: bloeiArray,
+                            bv: row['Bij/vlinder?'] || row['bv'] || row['B/V'] || '',
+                            bijzonderheden: row['Bijzonderheden'] || row['bijzonderheden'] || '-',
+                            waar: row['Waar?'] || row['waar'] || '-',
+                            heb: (row['Heb ik?'] || row['heb'] || '').toLowerCase().includes('ja') ? 'Ja' : 'Nee',
+                            vak: row['Vak'] || row['vak'] || '',
+                            locatie: row['Locatie'] || row['locatie'] || ''
+                        };
+                    });
+
+                    if (statusBadge) {
+                        statusBadge.innerHTML = `<i data-lucide="check-circle" class="w-3 h-3 text-emerald-300"></i> Live Sheet Online (${plantData.length})`;
+                    }
+
+                    applyFilters();
+                },
+                error: function(err) {
+                    console.error("Fout bij ophalen van Google Sheet CSV:", err);
+                    if (statusBadge) {
+                        statusBadge.innerHTML = `<i data-lucide="alert-circle" class="w-3 h-3 text-red-300"></i> Fout bij laden`;
+                    }
+                }
+            });
+        }
+
+        // Initialize UI
+        window.addEventListener('DOMContentLoaded', () => {
+            renderMonthButtons();
+            loadPlantDataFromSheet();
+            if (window.lucide) lucide.createIcons();
+        });
+
+        // View Switcher
+        function switchView(viewName) {
+            activeView = viewName;
+            ['designer', 'map', 'calendar', 'table'].forEach(v => {
+                const el = document.getElementById(`view-${v}`);
+                const btn = document.getElementById(`tab-${v}`);
+                if (v === viewName) {
+                    el.classList.remove('hidden');
+                    btn.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium transition bg-botanic-600 text-white shadow-sm';
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium text-botanic-200 hover:text-white transition';
+                }
+            });
+            applyFilters();
+        }
+
+        // Filter Handlers
+        function setHaveFilter(val) {
+            haveFilter = val;
+            document.querySelectorAll('.have-btn').forEach(btn => {
+                btn.className = 'have-btn py-1.5 rounded-lg border border-slate-200 font-medium hover:bg-slate-50 text-slate-700';
+            });
+            const activeBtn = document.getElementById(`have-${val === 'all' ? 'all' : (val === 'ja' ? 'yes' : 'no')}`);
+            if (activeBtn) {
+                activeBtn.className = 'have-btn py-1.5 rounded-lg border border-botanic-500 bg-botanic-50 text-botanic-700 font-semibold';
+            }
+            applyFilters();
+        }
+
+        function toggleMonthFilter(m) {
+            selectedMonth = (selectedMonth === m) ? null : m;
+            renderMonthButtons();
+            applyFilters();
+        }
+
+        function renderMonthButtons() {
+            const container = document.getElementById('month-buttons-container');
+            container.innerHTML = '';
+            for (let m = 3; m <= 11; m++) {
+                const btn = document.createElement('button');
+                btn.onclick = () => toggleMonthFilter(m);
+                const isSelected = selectedMonth === m;
+                btn.className = `py-1.5 rounded-lg border text-xs font-semibold transition ${
+                    isSelected ? 'bg-botanic-600 text-white border-botanic-700 shadow-sm' : 'border-slate-200 text-slate-600 hover:bg-slate-50 bg-white'
+                }`;
+                btn.innerText = `M${m}`;
+                container.appendChild(btn);
+            }
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-search').value = '';
+            document.getElementById('filter-color').value = '';
+            document.getElementById('filter-light').value = '';
+            document.getElementById('filter-type').value = '';
+            document.getElementById('filter-bee').checked = false;
+            document.getElementById('filter-butterfly').checked = false;
+            selectedMonth = null;
+            selectedZone = null;
+            haveFilter = 'all';
+            setHaveFilter('all');
+            renderMonthButtons();
+            applyFilters();
+        }
+
+        function selectZone(zoneName) {
+            selectedZone = (selectedZone === zoneName) ? null : zoneName;
+            applyFilters();
+        }
+
+        function setCanvasSize(w, h) {
+            canvasDimensions = { w, h };
+            localStorage.setItem('garden_canvas_dim', JSON.stringify(canvasDimensions));
+            updateCanvasDimensions();
+        }
+
+        function updateCanvasDimensions() {
+            const designerCanvas = document.getElementById('designer-canvas');
+            const overviewCanvas = document.getElementById('overview-map-canvas');
+
+            const widthStyle = `${canvasDimensions.w}px`;
+            const heightStyle = `${canvasDimensions.h}px`;
+
+            if (designerCanvas) {
+                designerCanvas.style.width = widthStyle;
+                designerCanvas.style.height = heightStyle;
+            }
+            if (overviewCanvas) {
+                overviewCanvas.style.width = widthStyle;
+                overviewCanvas.style.height = heightStyle;
+            }
+        }
+
+        function toggleZoneVisibility(zoneId, event) {
+            if (event) event.stopPropagation();
+            const z = gardenZones.find(item => item.id === zoneId);
+            if (z) {
+                z.active = !z.active;
+                localStorage.setItem('garden_zones_layout', JSON.stringify(gardenZones));
+                applyFilters();
+            }
+        }
+
+        function toggleSelectedZoneVisibility() {
+            if (selectedZone) {
+                toggleZoneVisibility(selectedZone);
+            }
+        }
+
+        function toggleAllZonesVisibility() {
+            const hasInactive = gardenZones.some(z => !z.active);
+            gardenZones.forEach(z => z.active = hasInactive);
+            localStorage.setItem('garden_zones_layout', JSON.stringify(gardenZones));
+            applyFilters();
+        }
+
+        function renderZoneVisibilityList() {
+            const container = document.getElementById('zone-visibility-list');
+            if (!container) return;
+            container.innerHTML = '';
+
+            gardenZones.forEach(z => {
+                const badge = document.createElement('button');
+                badge.onclick = (e) => toggleZoneVisibility(z.id, e);
+                badge.className = `flex items-center gap-1.5 px-2 py-1 rounded-lg border transition text-left ${
+                    z.active 
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-medium' 
+                        : 'bg-slate-100 border-slate-200 text-slate-400 line-through opacity-60'
+                }`;
+                badge.innerHTML = `
+                    <i data-lucide="${z.active ? 'eye' : 'eye-off'}" class="w-3 h-3 flex-shrink-0"></i>
+                    <span class="truncate max-w-[90px]">${z.name}</span>
+                `;
+                container.appendChild(badge);
+            });
+        }
+
+        function applyFilters() {
+            updateCanvasDimensions();
+            renderZoneVisibilityList();
+
+            const searchVal = document.getElementById('filter-search').value.toLowerCase().trim();
+            const colorVal = document.getElementById('filter-color').value;
+            const lightVal = document.getElementById('filter-light').value;
+            const typeVal = document.getElementById('filter-type').value;
+            const beeOnly = document.getElementById('filter-bee').checked;
+            const butterflyOnly = document.getElementById('filter-butterfly').checked;
+
+            const filtered = plantData.filter(p => {
+                if (searchVal && !`${p.naam} ${p.bijzonderheden} ${p.waar} ${p.vak} ${p.locatie}`.toLowerCase().includes(searchVal)) return false;
+                if (colorVal && p.kleur !== colorVal) return false;
+                if (lightVal && !p.licht.includes(lightVal)) return false;
+                if (typeVal && p.type !== typeVal) return false;
+                if (haveFilter === 'ja' && p.heb !== 'Ja') return false;
+                if (haveFilter === 'nee' && p.heb !== 'Nee') return false;
+                if (selectedMonth && !p.bloei.includes(selectedMonth)) return false;
+                if (beeOnly && !p.bv.includes('B')) return false;
+                if (butterflyOnly && !p.bv.includes('V')) return false;
+                return true;
+            });
+
+            document.getElementById('result-count').innerText = `${filtered.length} planten`;
+
+            renderDesignerCanvas(filtered);
+            renderOverviewMap(filtered);
+            renderCalendarView(filtered);
+            renderTableView(filtered);
+
+            if (window.lucide) lucide.createIcons();
+        }
+
+        // ==========================================
+        // DESIGNER & DRAG & DROP LOGIC
+        // ==========================================
+        function renderDesignerCanvas(filteredList) {
+            const canvas = document.getElementById('designer-canvas');
+            canvas.innerHTML = '';
+
+            gardenZones.forEach(z => {
+                if (!z.active) return;
+
+                const style = colorStyles[z.color] || colorStyles.emerald;
+                const isSelected = selectedZone === z.id;
+                const zonePlants = filteredList.filter(p => (z.id === 'Algemeen' ? (!p.vak || p.vak === '' || p.vak === 'Algemeen') : p.vak === z.id));
+
+                const zoneEl = document.createElement('div');
+                zoneEl.style.left = `${z.x}px`;
+                zoneEl.style.top = `${z.y}px`;
+                zoneEl.style.width = `${z.w}px`;
+                zoneEl.style.height = `${z.h}px`;
+                zoneEl.className = `designer-zone absolute rounded-2xl border-2 p-3 cursor-move flex flex-col justify-between shadow-sm transition-shadow ${style.bg} ${style.border} ${isSelected ? 'ring-4 ring-botanic-500 ring-offset-2 z-20' : 'z-10'}`;
+
+                let dotsHtml = '<div class="flex flex-wrap gap-1 mt-1 max-h-[60px] overflow-hidden pointer-events-none">';
+                zonePlants.forEach(p => {
+                    dotsHtml += `<span class="w-3 h-3 rounded-full border border-white/80 shadow-xs ${p.heb === 'Ja' ? 'bg-emerald-500' : 'bg-amber-400'}" title="${p.naam} (${p.locatie || 'Geen positie'})"></span>`;
+                });
+                dotsHtml += '</div>';
+
+                zoneEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="font-bold text-xs ${style.text} truncate pointer-events-none">${z.name}</span>
+                        <div class="flex items-center gap-1">
+                            <button onclick="toggleZoneVisibility('${z.id}', event)" class="p-0.5 text-slate-500 hover:text-slate-800 rounded transition" title="Vak verbergen">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full ${style.badge} pointer-events-none">${zonePlants.length}</span>
+                        </div>
+                    </div>
+                    ${dotsHtml}
+                    <div class="text-[10px] text-slate-400 text-right mt-auto pointer-events-none">${z.w}x${z.h}px</div>
+                    <div class="resize-handle" title="Sleep om grootte aan te passen"></div>
+                `;
+
+                zoneEl.onclick = (e) => {
+                    e.stopPropagation();
+                    selectZoneForDesigner(z.id);
+                };
+
+                const handle = zoneEl.querySelector('.resize-handle');
+                handle.onmousedown = (e) => {
+                    e.stopPropagation();
+                    activeResizeZone = z;
+                    resizeStartX = e.clientX;
+                    resizeStartY = e.clientY;
+                    resizeStartW = z.w;
+                    resizeStartH = z.h;
+                    document.onmousemove = onZoneResize;
+                    document.onmouseup = stopZoneAction;
+                };
+
+                zoneEl.onmousedown = (e) => {
+                    if (e.target.classList.contains('resize-handle') || e.target.closest('button')) return;
+                    activeDragZone = z;
+                    dragOffsetX = e.clientX - z.x;
+                    dragOffsetY = e.clientY - z.y;
+                    document.onmousemove = onZoneDrag;
+                    document.onmouseup = stopZoneAction;
+                };
+
+                canvas.appendChild(zoneEl);
+            });
+
+            updateDesignerSidePanel(filteredList);
+        }
+
+        function onZoneDrag(e) {
+            if (!activeDragZone) return;
+            const container = document.getElementById('designer-canvas').getBoundingClientRect();
+            let newX = Math.max(0, Math.min(container.width - activeDragZone.w, e.clientX - dragOffsetX));
+            let newY = Math.max(0, Math.min(container.height - activeDragZone.h, e.clientY - dragOffsetY));
+            
+            newX = Math.round(newX / 10) * 10;
+            newY = Math.round(newY / 10) * 10;
+
+            activeDragZone.x = newX;
+            activeDragZone.y = newY;
+            renderDesignerCanvas(plantData);
+        }
+
+        function onZoneResize(e) {
+            if (!activeResizeZone) return;
+            const deltaX = e.clientX - resizeStartX;
+            const deltaY = e.clientY - resizeStartY;
+
+            let newW = Math.max(80, Math.round((resizeStartW + deltaX) / 10) * 10);
+            let newH = Math.max(50, Math.round((resizeStartH + deltaY) / 10) * 10);
+
+            activeResizeZone.w = newW;
+            activeResizeZone.h = newH;
+            renderDesignerCanvas(plantData);
+        }
+
+        function stopZoneAction() {
+            activeDragZone = null;
+            activeResizeZone = null;
+            document.onmousemove = null;
+            document.onmouseup = null;
+            localStorage.setItem('garden_zones_layout', JSON.stringify(gardenZones));
+        }
+
+        function selectZoneForDesigner(zoneId) {
+            selectedZone = (selectedZone === zoneId) ? null : zoneId;
+            applyFilters();
+        }
+
+        function updateDesignerSidePanel(filteredList) {
+            const titleEl = document.getElementById('designer-zone-title');
+            const actionsEl = document.getElementById('zone-actions');
+            const plantsContainer = document.getElementById('designer-zone-plants');
+            const btnAddPlant = document.getElementById('btn-add-plant-to-zone');
+            const toggleEyeBtn = document.getElementById('btn-toggle-selected-zone');
+
+            if (!selectedZone) {
+                titleEl.innerText = 'Selecteer een vak op het canvas';
+                actionsEl.classList.add('hidden');
+                btnAddPlant.classList.add('hidden');
+                plantsContainer.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <i data-lucide="mouse-pointer-click" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
+                        <p class="text-xs">Klik op een vak om beplanting en specificaties te beheren.</p>
+                    </div>`;
+                return;
+            }
+
+            const currentZoneObj = gardenZones.find(z => z.id === selectedZone);
+            titleEl.innerText = currentZoneObj ? `${currentZoneObj.name} ${!currentZoneObj.active ? '(Verborgen)' : ''}` : selectedZone;
+            actionsEl.classList.remove('hidden');
+            btnAddPlant.classList.remove('hidden');
+
+            if (toggleEyeBtn && currentZoneObj) {
+                toggleEyeBtn.innerHTML = `<i data-lucide="${currentZoneObj.active ? 'eye' : 'eye-off'}" class="w-4 h-4"></i>`;
+            }
+
+            const zonePlants = filteredList.filter(p => (selectedZone === 'Algemeen' ? (!p.vak || p.vak === '' || p.vak === 'Algemeen') : p.vak === selectedZone));
+
+            plantsContainer.innerHTML = '';
+
+            if (zonePlants.length === 0) {
+                plantsContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-400">
+                        <i data-lucide="sprout" class="w-8 h-8 mx-auto mb-2 opacity-40"></i>
+                        <p class="text-xs">Nog geen planten toegewezen aan dit vak.</p>
+                    </div>`;
+            } else {
+                zonePlants.forEach(p => {
+                    const card = document.createElement('div');
+                    card.className = "p-2.5 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-white transition flex items-center justify-between text-xs";
+                    card.innerHTML = `
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="w-3 h-3 rounded-full flex-shrink-0 ${getColorBadgeClass(p.kleur)}"></span>
+                            <div class="truncate">
+                                <h4 class="font-semibold text-slate-800 truncate">${p.naam}</h4>
+                                <p class="text-[10px] text-slate-500 truncate">${p.locatie ? 'Positie: ' + p.locatie : 'Geen specifieke positie'}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="editPlantLocation(${p.id})" class="p-1 text-slate-400 hover:text-botanic-600 rounded" title="Positie bewerken">
+                                <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="removePlantFromZone(${p.id})" class="p-1 text-slate-400 hover:text-red-600 rounded" title="Verwijder uit vak">
+                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    `;
+                    plantsContainer.appendChild(card);
+                });
+            }
+        }
+
+        // Zone Modal logic
+        function openAddZoneModal() {
+            editingZoneId = null;
+            document.getElementById('zone-modal-title').innerText = 'Nieuw Tuinvak Toevoegen';
+            document.getElementById('input-zone-name').value = '';
+            document.getElementById('input-zone-color').value = 'emerald';
+            document.getElementById('input-zone-w').value = 180;
+            document.getElementById('input-zone-h').value = 110;
+            document.getElementById('zone-modal').classList.remove('hidden');
+        }
+
+        function editSelectedZone() {
+            if (!selectedZone) return;
+            const z = gardenZones.find(item => item.id === selectedZone);
+            if (!z) return;
+
+            editingZoneId = z.id;
+            document.getElementById('zone-modal-title').innerText = 'Tuinvak Bewerken';
+            document.getElementById('input-zone-name').value = z.name;
+            document.getElementById('input-zone-color').value = z.color || 'emerald';
+            document.getElementById('input-zone-w').value = z.w;
+            document.getElementById('input-zone-h').value = z.h;
+            document.getElementById('zone-modal').classList.remove('hidden');
+        }
+
+        function closeZoneModal() {
+            document.getElementById('zone-modal').classList.add('hidden');
+        }
+
+        function saveZone() {
+            const name = document.getElementById('input-zone-name').value.trim();
+            if (!name) return;
+
+            const color = document.getElementById('input-zone-color').value;
+            const w = parseInt(document.getElementById('input-zone-w').value) || 150;
+            const h = parseInt(document.getElementById('input-zone-h').value) || 100;
+
+            if (editingZoneId) {
+                const z = gardenZones.find(item => item.id === editingZoneId);
+                if (z) {
+                    z.name = name;
+                    z.color = color;
+                    z.w = w;
+                    z.h = h;
+                }
+            } else {
+                gardenZones.push({ id: name, name, x: 50, y: 50, w, h, color, active: true });
+            }
+
+            localStorage.setItem('garden_zones_layout', JSON.stringify(gardenZones));
+            closeZoneModal();
+            applyFilters();
+        }
+
+        function deleteSelectedZone() {
+            if (!selectedZone) return;
+            gardenZones = gardenZones.filter(z => z.id !== selectedZone);
+            plantData.forEach(p => {
+                if (p.vak === selectedZone) {
+                    p.vak = '';
+                    p.locatie = '';
+                }
+            });
+            selectedZone = null;
+            localStorage.setItem('garden_zones_layout', JSON.stringify(gardenZones));
+            applyFilters();
+        }
+
+        function resetZoneLayout() {
+            gardenZones = JSON.parse(JSON.stringify(defaultZones));
+            localStorage.setItem('garden_zones_layout', JSON.stringify(gardenZones));
+            applyFilters();
+        }
+
+        // Plant Assignment Modal
+        function openAssignPlantModal() {
+            if (!selectedZone) return;
+            const select = document.getElementById('input-assign-plant-id');
+            select.innerHTML = '';
+
+            plantData.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = `${p.naam} ${p.vak ? `(momenteel in: ${p.vak})` : ''}`;
+                select.appendChild(opt);
+            });
+
+            document.getElementById('input-assign-location').value = '';
+            document.getElementById('assign-plant-modal').classList.remove('hidden');
+        }
+
+        function closeAssignPlantModal() {
+            document.getElementById('assign-plant-modal').classList.add('hidden');
+        }
+
+        function savePlantAssignment() {
+            const plantId = parseInt(document.getElementById('input-assign-plant-id').value);
+            const location = document.getElementById('input-assign-location').value.trim();
+
+            const plant = plantData.find(p => p.id === plantId);
+            if (plant && selectedZone) {
+                plant.vak = selectedZone;
+                plant.locatie = location;
+                applyFilters();
+            }
+            closeAssignPlantModal();
+        }
+
+        function editPlantLocation(plantId) {
+            const plant = plantData.find(p => p.id === plantId);
+            if (!plant) return;
+            const newLoc = prompt(`Voer een nieuwe positie in voor ${plant.naam}:`, plant.locatie || '');
+            if (newLoc !== null) {
+                plant.locatie = newLoc.trim();
+                applyFilters();
+            }
+        }
+
+        function removePlantFromZone(plantId) {
+            const plant = plantData.find(p => p.id === plantId);
+            if (plant) {
+                plant.vak = '';
+                plant.locatie = '';
+                applyFilters();
+            }
+        }
+
+        // ==========================================
+        // OVERVIEW MAP & OTHER VIEWS
+        // ==========================================
+        function renderOverviewMap(filteredList) {
+            const canvas = document.getElementById('overview-map-canvas');
+            canvas.innerHTML = '';
+
+            gardenZones.forEach(z => {
+                if (!z.active) return;
+
+                const style = colorStyles[z.color] || colorStyles.emerald;
+                const isSelected = selectedZone === z.id;
+                const zonePlants = filteredList.filter(p => (z.id === 'Algemeen' ? (!p.vak || p.vak === '' || p.vak === 'Algemeen') : p.vak === z.id));
+
+                const zoneEl = document.createElement('div');
+                zoneEl.style.left = `${z.x}px`;
+                zoneEl.style.top = `${z.y}px`;
+                zoneEl.style.width = `${z.w}px`;
+                zoneEl.style.height = `${z.h}px`;
+                zoneEl.className = `absolute rounded-2xl border-2 p-3 cursor-pointer flex flex-col justify-between shadow-xs transition hover:scale-[1.02] ${style.bg} ${style.border} ${isSelected ? 'ring-4 ring-botanic-500 ring-offset-2 z-20' : 'z-10'}`;
+
+                let dotsHtml = '<div class="flex flex-wrap gap-1 mt-1 max-h-[60px] overflow-hidden">';
+                zonePlants.forEach(p => {
+                    dotsHtml += `<span class="w-3 h-3 rounded-full border border-white/80 shadow-xs ${p.heb === 'Ja' ? 'bg-emerald-500' : 'bg-amber-400'}" title="${p.naam}"></span>`;
+                });
+                dotsHtml += '</div>';
+
+                zoneEl.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="font-bold text-xs ${style.text} truncate">${z.name}</span>
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full ${style.badge}">${zonePlants.length}</span>
+                    </div>
+                    ${dotsHtml}
+                `;
+
+                zoneEl.onclick = () => selectZone(z.id);
+                canvas.appendChild(zoneEl);
+            });
+
+            const sideList = document.getElementById('zone-plants-list');
+            const sideTitle = document.getElementById('selected-zone-title');
+            const sideSub = document.getElementById('selected-zone-subtitle');
+
+            sideTitle.innerText = selectedZone ? `Geselecteerd Vak: ${selectedZone}` : 'Alle Gefilterde Vakken';
+            sideSub.innerText = selectedZone ? `Toont planten in vak "${selectedZone}".` : 'Klik op een vak op de kaart om te filteren.';
+
+            const zoneFiltered = selectedZone 
+                ? filteredList.filter(p => (selectedZone === 'Algemeen' ? (!p.vak || p.vak === '' || p.vak === 'Algemeen') : p.vak === selectedZone))
+                : filteredList;
+
+            sideList.innerHTML = '';
+
+            if (zoneFiltered.length === 0) {
+                sideList.innerHTML = `
+                    <div class="text-center py-10 text-slate-400">
+                        <i data-lucide="sprout" class="w-10 h-10 mx-auto mb-2 opacity-40"></i>
+                        <p class="text-xs">Geen planten gevonden in deze selectie.</p>
+                    </div>`;
+            } else {
+                zoneFiltered.forEach(p => {
+                    const colorClass = getColorBadgeClass(p.kleur);
+                    const card = document.createElement('div');
+                    card.onclick = () => openModal(p.id);
+                    card.className = "p-3 rounded-xl border border-slate-100 hover:border-botanic-300 bg-slate-50/50 hover:bg-white transition cursor-pointer flex items-center justify-between group shadow-xs";
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="w-3.5 h-3.5 rounded-full ${colorClass} shadow-xs flex-shrink-0"></div>
+                            <div>
+                                <h4 class="font-semibold text-xs text-slate-800 group-hover:text-botanic-700 transition">${p.naam}</h4>
+                                <div class="flex gap-2 text-[10px] text-slate-500 mt-0.5">
+                                    <span class="bg-slate-200/60 px-1.5 py-0.5 rounded font-medium">${p.type || 'Plant'}</span>
+                                    <span>${p.hoogte}</span>
+                                    ${p.locatie ? `<span class="text-botanic-700 font-semibold">${p.locatie}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${p.heb === 'Ja' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                ${p.heb === 'Ja' ? 'Heb ik' : 'Nee'}
+                            </span>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 group-hover:text-botanic-600 transition"></i>
+                        </div>
+                    `;
+                    sideList.appendChild(card);
+                });
+            }
+        }
+
+        function renderCalendarView(filteredList) {
+            const tbody = document.getElementById('calendar-table-body');
+            tbody.innerHTML = '';
+
+            if (filteredList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">Geen planten gevonden.</td></tr>`;
+                return;
+            }
+
+            filteredList.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+                let monthCells = '';
+                for (let m = 3; m <= 11; m++) {
+                    const isBlooming = p.bloei.includes(m);
+                    monthCells += `
+                        <td class="py-2.5 px-2 text-center">
+                            ${isBlooming 
+                                ? `<span class="inline-block w-4 h-4 rounded-full ${getColorBadgeClass(p.kleur)} shadow-xs" title="${p.naam} bloeit in M${m}"></span>` 
+                                : '<span class="text-slate-200">•</span>'}
+                        </td>`;
+                }
+
+                tr.innerHTML = `
+                    <td class="py-2.5 px-4 font-semibold text-slate-800 sticky left-0 bg-white shadow-xs">
+                        <div class="flex items-center gap-2 cursor-pointer" onclick="openModal(${p.id})">
+                            <span class="w-2.5 h-2.5 rounded-full ${getColorBadgeClass(p.kleur)}"></span>
+                            <span class="hover:text-botanic-600 transition truncate w-56">${p.naam}</span>
+                        </div>
+                    </td>
+                    ${monthCells}
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderTableView(filteredList) {
+            const tbody = document.getElementById('full-table-body');
+            tbody.innerHTML = '';
+
+            if (filteredList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="py-8 text-center text-slate-400">Geen resultaten voor deze filters.</td></tr>`;
+                return;
+            }
+
+            filteredList.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-800">${p.naam}</td>
+                    <td class="p-3"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">${p.vak || 'Algemeen'}</span></td>
+                    <td class="p-3 text-slate-600">${p.locatie || '-'}</td>
+                    <td class="p-3 text-slate-600">${p.type || '-'}</td>
+                    <td class="p-3">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full ${getColorBadgeClass(p.kleur)}"></span>
+                            ${p.kleur || '-'}
+                        </span>
+                    </td>
+                    <td class="p-3 text-slate-600">M${p.bloei.join(', M')}</td>
+                    <td class="p-3 text-slate-600">${p.licht || '-'}</td>
+                    <td class="p-3 font-medium text-slate-700">${p.bv || '-'}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded-full font-bold text-[10px] ${p.heb === 'Ja' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                            ${p.heb === 'Ja' ? 'Ja' : 'Nee'}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        <button onclick="openModal(${p.id})" class="text-botanic-600 hover:text-botanic-800 font-semibold transition">Details</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Modal Handlers
+        function openModal(id) {
+            const plant = plantData.find(p => p.id === id);
+            if (!plant) return;
+
+            document.getElementById('modal-name').innerText = plant.naam;
+            document.getElementById('modal-type').innerText = plant.type ? `TYPE: ${plant.type}` : 'PLANT';
+            document.getElementById('modal-color-badge').className = `w-5 h-5 rounded-full mt-1 flex-shrink-0 border border-slate-200 ${getColorBadgeClass(plant.kleur)}`;
+
+            document.getElementById('modal-vak').innerText = plant.vak || 'Algemeen / Niet toegewezen';
+            document.getElementById('modal-locatie').innerText = plant.locatie || 'Vrij bereik';
+            document.getElementById('modal-bloei').innerText = plant.bloei.length ? `Maanden: ${plant.bloei.join(', ')}` : 'Onbekend';
+            document.getElementById('modal-hoogte').innerText = plant.hoogte || 'Onbekend';
+            document.getElementById('modal-licht').innerText = plant.licht || 'Onbekend';
+            document.getElementById('modal-droog').innerText = plant.droog === 'Droog' ? 'Ja (Droogteresistent)' : (plant.droog === 'Nee' ? 'Nee (Vochtbehoeftig)' : 'Normaal');
+
+            document.getElementById('modal-bijzonderheden').innerText = plant.bijzonderheden !== '-' ? plant.bijzonderheden : 'Geen specifieke bijzonderheden opgegeven.';
+            document.getElementById('modal-waar').innerText = plant.waar !== '-' ? plant.waar : 'Niet vermeld';
+
+            const hebBadge = document.getElementById('modal-hebik');
+            if (plant.heb === 'Ja') {
+                hebBadge.className = 'font-semibold px-2.5 py-1 rounded-lg inline-block bg-emerald-100 text-emerald-800';
+                hebBadge.innerText = 'Ja (Aanwezig in tuin)';
+            } else {
+                hebBadge.className = 'font-semibold px-2.5 py-1 rounded-lg inline-block bg-amber-100 text-amber-800';
+                hebBadge.innerText = 'Nee (Nog aanschaffen)';
+            }
+
+            const ecoContainer = document.getElementById('modal-eco');
+            ecoContainer.innerHTML = '';
+            if (plant.bv.includes('B')) {
+                ecoContainer.innerHTML += `<span class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1"><i data-lucide="bee" class="w-3.5 h-3.5"></i> Bijvriendelijk</span>`;
+            }
+            if (plant.bv.includes('V')) {
+                ecoContainer.innerHTML += `<span class="bg-purple-100 text-purple-800 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Vlinderaantrekkend</span>`;
+            }
+            if (!plant.bv.includes('B') && !plant.bv.includes('V')) {
+                ecoContainer.innerText = 'Geen specifieke insecten-kwalificatie vermeld';
+            }
+
+            document.getElementById('plant-modal').classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function closeModal() {
+            document.getElementById('plant-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
