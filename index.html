@@ -343,12 +343,14 @@
                         window.saveState();
                     }
                 }, (error) => {
-                    console.warn("Firestore luisteraar waarschuwing, schakelt over op fallback:", error);
+                    console.warn("Firestore luisteraar waarschuwing:", error);
+                    updateCloudStatus('local', `Lokaal (Firestore fout: ${error.code || 'permission-denied'})`);
                     fallbackToLocalStorage();
                 });
 
             } catch (e) {
                 console.warn("Cloud init error, falling back to localStorage", e);
+                updateCloudStatus('local', `Lokaal (Auth fout: ${e.code || 'niet actief'})`);
                 fallbackToLocalStorage();
             }
 
@@ -358,7 +360,6 @@
         function fallbackToLocalStorage() {
             window.zones = JSON.parse(localStorage.getItem('garden_zones')) || [];
             window.panelLayouts = JSON.parse(localStorage.getItem('garden_panels_layout')) || window.panelLayouts;
-            updateCloudStatus('local', 'Lokaal opgeslagen');
             applyPanelPositions();
         }
 
