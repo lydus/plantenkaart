@@ -98,15 +98,15 @@
             </div>
             <div>
                 <h1 class="font-bold text-slate-800 text-sm leading-tight">Tuinbeplantingsplan Studio</h1>
-                <p class="text-[11px] text-slate-500">Brederodelaan 43, Ermelo • Interactieve tuinkaart</p>
+                <p class="text-[11px] text-slate-500">Brederodelaan 43, Ermelo • Live Cloud-Gekoppeld (plantenkaart)</p>
             </div>
         </div>
 
         <div class="flex items-center space-x-2">
             <!-- Cloud Sync Status Badge -->
-            <div id="cloud-status" class="hidden sm:flex items-center space-x-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
+            <div id="cloud-status" class="flex items-center space-x-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
                 <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
-                <span id="cloud-status-text">Verbinden met cloud...</span>
+                <span id="cloud-status-text">Verbinden met Firebase...</span>
             </div>
 
             <div class="hidden md:flex items-center space-x-1.5 text-xs text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
@@ -261,10 +261,21 @@
     <!-- Firebase SDK & Cloud Sync Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQpPx2dcL_HkAnxs_PhSg582oFExs3fyQsFMsCZPzKG-NfYnuRYRiVNjEMGXDNesr1aYqTXBZvTn11I/pubhtml";
+
+        // Jouw eigen Firebase Configuratie
+        const firebaseConfig = {
+            apiKey: "AIzaSyDAzU-GuXINIx0W-p9U1UR4JYh0UVezclo",
+            authDomain: "plantenkaart.firebaseapp.com",
+            projectId: "plantenkaart",
+            storageBucket: "plantenkaart.firebasestorage.app",
+            messagingSenderId: "200630330589",
+            appId: "1:200630330589:web:a75e8375aab86624d8a734",
+            measurementId: "G-GVBR3XRBWR"
+        };
 
         window.allPlants = [];
         window.zones = [];
@@ -293,9 +304,8 @@
 
         let db = null;
         let auth = null;
-        let userId = null;
-        let appId = typeof __app_id !== 'undefined' ? __app_id : 'tuinbeplantingsplan-studio';
         let saveTimeout = null;
+        let isCloudConnected = false;
 
         window.addEventListener('DOMContentLoaded', async () => {
             applyPanelPositions();
@@ -303,25 +313,40 @@
             updateCanvasTransform();
             if (window.lucide) lucide.createIcons();
 
-            // Initialize Firebase Cloud Storage with graceful localStorage fallback
+            // Initialize Firebase met jouw eigen project
             try {
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-                if (firebaseConfig && firebaseConfig.apiKey) {
-                    const app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                await signInAnonymously(auth);
+                isCloudConnected = true;
+
+                // Luister live naar wijzigingen in jouw Firestore database (voor realtime syncing over apparaten)
+                const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
+                
+                onSnapshot(stateDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if (data.zones && data.zones.length > 0) {
+                            window.zones = data.zones;
+                        }
+                        if (data.panelLayouts) {
+                            window.panelLayouts = data.panelLayouts;
+                            applyPanelPositions();
+                        }
+                        renderDesignerCanvas();
+                        renderZoneManagerPanel();
+                        updateCloudStatus('synced', 'In jouw Firebase cloud opgeslagen');
                     } else {
-                        await signInAnonymously(auth);
+                        // Nog geen document in cloud, sla eerste versie op
+                        window.saveState();
                     }
-                    userId = auth.currentUser ? auth.currentUser.uid : 'default-user';
-                    
-                    await loadFromCloud();
-                } else {
+                }, (error) => {
+                    console.warn("Firestore luisteraar waarschuwing, schakelt over op fallback:", error);
                     fallbackToLocalStorage();
-                }
+                });
+
             } catch (e) {
                 console.warn("Cloud init error, falling back to localStorage", e);
                 fallbackToLocalStorage();
@@ -345,7 +370,7 @@
             badge.classList.remove('hidden', 'bg-amber-50', 'text-amber-600', 'border-amber-200', 'bg-emerald-50', 'text-emerald-700', 'border-emerald-200', 'bg-slate-50', 'text-slate-600', 'border-slate-200');
             if (status === 'synced') {
                 badge.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-200');
-                badge.innerHTML = `<i data-lucide="cloud" class="w-3.5 h-3.5"></i><span id="cloud-status-text">${text}</span>`;
+                badge.innerHTML = `<i data-lucide="cloud-check" class="w-3.5 h-3.5"></i><span id="cloud-status-text">${text}</span>`;
             } else if (status === 'saving') {
                 badge.classList.add('bg-amber-50', 'text-amber-600', 'border-amber-200');
                 badge.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span id="cloud-status-text">${text}</span>`;
@@ -356,53 +381,30 @@
             if (window.lucide) lucide.createIcons();
         }
 
-        async function loadFromCloud() {
-            if (!db || !userId) {
-                fallbackToLocalStorage();
-                return;
-            }
-            try {
-                const docRef = doc(db, 'artifacts_data', appId, 'state', 'garden_state');
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    if (data.zones) window.zones = data.zones;
-                    if (data.panelLayouts) window.panelLayouts = data.panelLayouts;
-                    applyPanelPositions();
-                    updateCloudStatus('synced', 'In cloud opgeslagen');
-                } else {
-                    fallbackToLocalStorage();
-                }
-            } catch (e) {
-                console.warn("Cloud load warning (using local fallback):", e.message);
-                fallbackToLocalStorage();
-            }
-        }
-
         window.saveState = function() {
-            // Always save locally immediately
+            // Bewaar altijd lokaal als back-up
             localStorage.setItem('garden_zones', JSON.stringify(window.zones));
             localStorage.setItem('garden_panels_layout', JSON.stringify(window.panelLayouts));
 
-            // Debounce cloud sync if available
-            if (!db || !userId) return;
-            updateCloudStatus('saving', 'Opslaan in cloud...');
+            // Sla op in Firebase cloud
+            if (!db || !isCloudConnected) return;
+            updateCloudStatus('saving', 'Opslaan in Firebase...');
             if (saveTimeout) clearTimeout(saveTimeout);
 
             saveTimeout = setTimeout(async () => {
                 try {
-                    const docRef = doc(db, 'artifacts_data', appId, 'state', 'garden_state');
-                    await setDoc(docRef, {
+                    const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
+                    await setDoc(stateDocRef, {
                         zones: window.zones,
                         panelLayouts: window.panelLayouts,
                         updatedAt: new Date().toISOString()
                     });
-                    updateCloudStatus('synced', 'In cloud opgeslagen');
+                    updateCloudStatus('synced', 'In jouw Firebase cloud opgeslagen');
                 } catch (e) {
                     console.warn("Cloud save warning (saved locally):", e.message);
                     updateCloudStatus('local', 'Lokaal opgeslagen');
                 }
-            }, 800);
+            }, 500);
         }
 
         // --- Viewport & Canvas Controls ---
@@ -647,7 +649,7 @@
                 complete: function(results) {
                     processSheetData(results.data, statusEl);
                 },
-                error: function(err) {
+                error: function() {
                     const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(csvUrl);
                     Papa.parse(proxyUrl, {
                         download: true,
@@ -706,6 +708,7 @@
                 csvZonesMap[zoneName].push(plantObj);
             });
 
+            // Houd bestaande posities/grootte vast als ze al bestaan
             let currentZones = window.zones || [];
             let newZones = [];
             let startX = 100;
@@ -754,8 +757,10 @@
                 }
             });
 
-            window.zones = newZones;
-            window.saveState();
+            // Als we al zones uit cloud hadden, behouden we die volledig
+            if (currentZones.length === 0) {
+                window.zones = newZones;
+            }
 
             if (statusEl) statusEl.innerText = `${window.allPlants.length} planten en ${window.zones.length} vakken geladen.`;
             populateFilterDropdowns();
