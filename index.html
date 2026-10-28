@@ -99,7 +99,7 @@
             </div>
             <div>
                 <h1 class="font-bold text-slate-800 text-sm leading-tight">Tuinbeplantingsplan Studio</h1>
-                <p class="text-[11px] text-slate-500">Brederodelaan 43, Ermelo • Live Cloud Sync Active</p>
+                <p class="text-[11px] text-slate-500">Live Cloud Sync Active</p>
             </div>
         </div>
 
@@ -288,7 +288,6 @@
         window.selectedPlantCatalogId = null;
         window.activeModalPlantInstance = null;
 
-        // Viewport state
         window.panX = 150;
         window.panY = 100;
         window.scale = 1;
@@ -315,10 +314,10 @@
             updateCanvasTransform();
             if (window.lucide) lucide.createIcons();
 
-            // 1. Eerst brondata inladen uit Google Sheet
+            // Stap 1: Altijd EERST de Google Sheet data ophalen
             await loadPlantDataFromSheet();
 
-            // 2. Daarna verbinden met Firebase om posities/vakken op te halen
+            // Stap 2: Daarna verbinden met Firebase en de locaties/vakken inladen
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
@@ -337,11 +336,11 @@
                             applyPanelPositions();
                         }
                         if (data.zones && data.zones.length > 0) {
-                            // Merge cloud zones met de verse Google Sheet plant-ID's en objecten
-                            mergeCloudZonesWithSheetData(data.zones);
+                            // Merge Firebase vakken met de actuele Google Sheet data
+                            // Planten die niet meer in de sheet staan worden automatisch weggefilterd.
+                            mergeFirebaseZonesWithSheetData(data.zones);
                         }
                     } else {
-                        // Geen cloud data aanwezig, sla de huidige initiële staat op
                         window.saveState();
                     }
                     cloudDataLoaded = true;
@@ -364,7 +363,7 @@
         function fallbackToLocalStorage() {
             const localZones = JSON.parse(localStorage.getItem('garden_zones'));
             if (localZones && localZones.length > 0) {
-                mergeCloudZonesWithSheetData(localZones);
+                mergeFirebaseZonesWithSheetData(localZones);
             }
             const localPanels = JSON.parse(localStorage.getItem('garden_panels_layout'));
             if (localPanels) {
@@ -375,27 +374,25 @@
             renderZoneManagerPanel();
         }
 
-        function mergeCloudZonesWithSheetData(cloudZones) {
-            // Zorg dat plantId's in cloud-zones gekoppeld blijven aan de actuele planten uit window.allPlants
-            window.zones = cloudZones.map(cz => {
-                // Controleer of de planten in dit vak nog matchen met actuele window.allPlants op naam of ID
-                const updatedPlants = (cz.plants || []).map(pInst => {
+        function mergeFirebaseZonesWithSheetData(firebaseZones) {
+            window.zones = firebaseZones.map(fz => {
+                // Filter alleen plant-instanties waarvan de plant nog daadwerkelijk in window.allPlants (Google Sheet) staat
+                const validPlants = (fz.plants || []).map(pInst => {
                     const foundDirect = window.allPlants.find(p => p.id === pInst.plantId);
                     if (foundDirect) return pInst;
 
-                    // Zoek op naam als plantId gewijzigd is
                     if (pInst.plantName) {
                         const foundByName = window.allPlants.find(p => p.name.toLowerCase() === pInst.plantName.toLowerCase());
                         if (foundByName) {
                             return { ...pInst, plantId: foundByName.id };
                         }
                     }
-                    return pInst;
-                }).filter(pInst => window.allPlants.some(p => p.id === pInst.plantId));
+                    return null; // Als plant niet meer in Sheet staat, wordt deze null
+                }).filter(pInst => pInst !== null && window.allPlants.some(p => p.id === pInst.plantId));
 
                 return {
-                    ...cz,
-                    plants: updatedPlants
+                    ...fz,
+                    plants: validPlants
                 };
             });
         }
@@ -685,6 +682,8 @@
                 if (csvUrl.includes('/pubhtml')) {
                     csvUrl = csvUrl.replace('/pubhtml', '/pub?output=csv');
                 }
+                // Cache buster toevoegen om altijd de verse Google Sheet data op te halen
+                csvUrl += (csvUrl.includes('?') ? '&' : '?') + '_t=' + new Date().getTime();
 
                 Papa.parse(csvUrl, {
                     download: true,
@@ -758,7 +757,7 @@
                 csvZonesMap[zoneName].push(plantObj);
             });
 
-            // Als er nog géén zones zijn ingeladen (of eerste start), bouw ze op basis van de sheet kolommen
+            // Als er nog helemaal geen zones zijn, maken we ze aan op basis van de Google Sheet kolommen
             if (!window.zones || window.zones.length === 0) {
                 let initialZones = [];
                 let startX = 100;
@@ -798,11 +797,10 @@
 
                 window.zones = initialZones;
             } else {
-                // Als zones al bestonden (bijv. uit localStorage of Firebase), controleer of elk vak uit de sheet erin staat
+                // Zorg ervoor dat eventuele nieuwe vakken uit de Google Sheet ook worden toegevoegd
                 Object.keys(csvZonesMap).forEach(zName => {
                     let existingZone = window.zones.find(z => z.name.toLowerCase() === zName.toLowerCase());
                     if (!existingZone) {
-                        // Vak toevoegen als deze nieuw is in de sheet
                         let zPlants = csvZonesMap[zName].map((p, pIdx) => ({
                             instanceId: 'inst-' + Math.random().toString(36).substring(2, 9),
                             plantId: p.id,
