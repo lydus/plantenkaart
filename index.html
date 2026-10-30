@@ -491,15 +491,25 @@
 
             <!-- Vaste knop voor de specifieke Google Sheet -->
             <div class="space-y-2 pt-2">
-                <button onclick="window.fetchDefaultGardenSheet()" class="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl transition flex items-center justify-center space-x-2 shadow-sm text-xs">
-                    <i data-lucide="download-cloud" class="w-4 h-4"></i>
-                    <span>Laad Gegevens van Google Sheet</span>
+                <button id="btn-fetch-sheet" onclick="window.fetchDefaultGardenSheet()" class="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl transition flex items-center justify-center space-x-2 shadow-sm text-xs">
+                    <i id="fetch-sheet-icon" data-lucide="download-cloud" class="w-4 h-4"></i>
+                    <span id="fetch-sheet-label">Laad Gegevens van Google Sheet</span>
                 </button>
             </div>
 
-            <div id="csv-preview-summary" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-900 p-3 rounded-xl space-y-1">
+            <!-- Status Indicator tijdens ophalen -->
+            <div id="csv-loading-status" class="hidden bg-slate-50 border border-slate-200 text-slate-700 p-3 rounded-xl flex items-center space-x-3">
+                <i data-lucide="loader-2" class="w-4 h-4 text-emerald-700 animate-spin flex-shrink-0"></i>
+                <span id="csv-status-step-text" class="text-xs font-medium">Verbinding maken met Google Sheet...</span>
+            </div>
+
+            <div id="csv-preview-summary" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-900 p-3 rounded-xl space-y-2">
                 <p id="csv-preview-count" class="font-bold text-xs"></p>
-                <p class="text-[11px] text-emerald-800">Klaar om te verwerken en te synchroniseren met Firebase.</p>
+                <!-- Gedetailleerd overzicht van verwerkte wijzigingen -->
+                <div id="csv-changes-detail" class="text-[11px] text-emerald-800 space-y-1 bg-white/70 p-2 rounded-lg border border-emerald-200 max-h-36 overflow-y-auto custom-scrollbar">
+                    <!-- Dynamic change log details -->
+                </div>
+                <p class="text-[10px] text-emerald-700 italic">Posities van bestaande planten op de kaart blijven behouden.</p>
             </div>
 
             <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
@@ -1917,7 +1927,7 @@
 
                 const customImageFromCol = getVal(imageIdx, '');
 
-                // Kolom J = index 9 (0-indexed: A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9)
+                // Kolom J = index 9 (0-indexed)
                 const nurseryFromColJ = rowArr[9] !== undefined && rowArr[9] !== null ? String(rowArr[9]).trim() : '';
 
                 const name = getVal(nameIdx) || firstCell;
@@ -1968,7 +1978,6 @@
                     image: customImageFromCol
                 };
 
-                // Als er geen afbeelding in de nieuwe kolom staat, automatisch ophalen
                 if (!customImageFromCol) {
                     window.extractImageFromUrl(plantObj).then(img => {
                         if (img) plantObj.image = img;
@@ -1978,11 +1987,56 @@
                 return plantObj;
             }).filter(Boolean);
 
+            // Analyseer wijzigingen ten opzichte van de huidige database
+            let newPlantsCount = 0;
+            let updatedPlantsCount = 0;
+            let unchangedCount = 0;
+            let changeLogs = [];
+
+            parsedCsvPlants.forEach(newP => {
+                const existingP = window.allPlants.find(p => p.name.trim().toLowerCase() === newP.name.trim().toLowerCase());
+                if (!existingP) {
+                    newPlantsCount++;
+                    changeLogs.push(`✨ <strong>Nieuwe plant:</strong> ${newP.name}`);
+                } else {
+                    // Check specifieke eigenschapsveranderingen
+                    let fieldChanges = [];
+                    if ((existingP.color || '').toLowerCase() !== (newP.color || '').toLowerCase()) fieldChanges.push(`kleur (${existingP.color} ➔ ${newP.color})`);
+                    if (existingP.bloom !== newP.bloom) fieldChanges.push(`bloeitijd (${existingP.bloom || 'geen'} ➔ ${newP.bloom})`);
+                    if (existingP.nursery !== newP.nursery) fieldChanges.push(`kweker`);
+                    if (existingP.zones !== newP.zones) fieldChanges.push(`vakken`);
+                    if (existingP.image !== newP.image && newP.image) fieldChanges.push(`afbeelding`);
+
+                    if (fieldChanges.length > 0) {
+                        updatedPlantsCount++;
+                        changeLogs.push(`✏️ <strong>Aangepast (${newP.name}):</strong> ${fieldChanges.join(', ')}`);
+                    } else {
+                        unchangedCount++;
+                    }
+                }
+            });
+
             const countEl = document.getElementById('csv-preview-summary');
             const previewCount = document.getElementById('csv-preview-count');
+            const detailBox = document.getElementById('csv-changes-detail');
             const confirmBtn = document.getElementById('btn-confirm-import');
 
-            if (previewCount) previewCount.innerText = `${parsedCsvPlants.length} planten succesvol gelezen!`;
+            if (previewCount) previewCount.innerText = `${parsedCsvPlants.length} planten verwerkt uit Google Sheet!`;
+            
+            if (detailBox) {
+                let summaryHeader = `<div class="font-semibold text-[11px] mb-1 text-emerald-900 flex items-center space-x-2">
+                    <span>Nieuw: <strong>${newPlantsCount}</strong></span> • 
+                    <span>Gewijzigd: <strong>${updatedPlantsCount}</strong></span> • 
+                    <span>Ongewijzigd: <strong>${unchangedCount}</strong></span>
+                </div>`;
+
+                if (changeLogs.length === 0) {
+                    detailBox.innerHTML = summaryHeader + `<p class="text-slate-500 italic">Geen inhoudelijke wijzigingen gevonden; alle plantgegevens zijn al actueel.</p>`;
+                } else {
+                    detailBox.innerHTML = summaryHeader + `<ul class="space-y-1">${changeLogs.map(log => `<li>${log}</li>`).join('')}</ul>`;
+                }
+            }
+
             if (countEl) countEl.classList.remove('hidden');
             if (confirmBtn) confirmBtn.disabled = false;
         };
@@ -2003,6 +2057,21 @@
         };
 
         window.fetchDefaultGardenSheet = async function() {
+            const btnFetch = document.getElementById('btn-fetch-sheet');
+            const fetchLabel = document.getElementById('fetch-sheet-label');
+            const statusBox = document.getElementById('csv-loading-status');
+            const statusText = document.getElementById('csv-status-step-text');
+            const previewSummary = document.getElementById('csv-preview-summary');
+
+            // Toon statusbox en update knop naar laad-status
+            if (statusBox) statusBox.classList.remove('hidden');
+            if (previewSummary) previewSummary.classList.add('hidden');
+            if (btnFetch) btnFetch.disabled = true;
+
+            const updateStatus = (text) => {
+                if (statusText) statusText.innerText = text;
+            };
+
             const rawUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQpPx2dcL_HkAnxs_PhSg582oFExs3fyQsFMsCZPzKG-NfYnuRYRiVNjEMGXDNesr1aYqTXBZvTn11I/pubhtml';
             let csvUrl = rawUrl;
             if (csvUrl.includes('/pubhtml')) {
@@ -2012,13 +2081,29 @@
             }
 
             try {
+                updateStatus('1/3: Verbinding maken met Google Sheet...');
+                await new Promise(r => setTimeout(r, 200));
+
+                updateStatus('2/3: Actuele CSV-gegevens ophalen...');
                 const cacheBustUrl = csvUrl + (csvUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
                 const response = await fetch(cacheBustUrl);
+                
                 if (!response.ok) throw new Error(`HTTP Fout ${response.status}`);
+
+                updateStatus('3/3: CSV-data ontleden & planten analyseren...');
                 const csvText = await response.text();
+                
                 window.processRawCsvText(csvText);
+
+                if (statusBox) statusBox.classList.add('hidden');
             } catch (err) {
-                // Foutafhandeling zonder alert()
+                console.error("Fout bij ophalen Google Sheet:", err);
+                updateStatus('❌ Ophalen mislukt: Controleer je verbinding of Google Sheet link.');
+                if (statusBox) {
+                    statusBox.className = 'bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl flex items-center space-x-3';
+                }
+            } finally {
+                if (btnFetch) btnFetch.disabled = false;
             }
         };
 
