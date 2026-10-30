@@ -570,7 +570,7 @@
         window.selectedPlantCatalogId = null;
         window.activeModalPlantInstance = null;
         window.currentBloomMonthIndex = parseInt(localStorage.getItem('garden_bloom_month')) || 5;
-        window.isReadMode = false;
+        window.isReadMode = localStorage.getItem('garden_is_read_mode') === 'true'; // Standaard uit localStorage laden (standaard true in HTML init)
         
         // --- Color & Image Helpers ---
         window.getPlantColorStyle = function(colorName) {
@@ -714,6 +714,7 @@
             localStorage.setItem('garden_zones', JSON.stringify(window.zones));
             localStorage.setItem('garden_panels_layout', JSON.stringify(window.panelLayouts));
             localStorage.setItem('garden_bloom_month', window.currentBloomMonthIndex);
+            localStorage.setItem('garden_is_read_mode', window.isReadMode);
 
             if (db && isCloudConnected) {
                 const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
@@ -722,6 +723,7 @@
                     zones: window.zones,
                     panelLayouts: window.panelLayouts,
                     bloomMonth: window.currentBloomMonthIndex,
+                    isReadMode: window.isReadMode,
                     updatedAt: new Date().toISOString()
                 }, { merge: true }).catch(err => {
                     console.warn("Cloud save warning:", err);
@@ -782,6 +784,9 @@
 
         window.toggleAppMode = function() {
             window.isReadMode = !window.isReadMode;
+            localStorage.setItem('garden_is_read_mode', window.isReadMode);
+            window.saveState();
+            
             const modeText = document.getElementById('mode-text');
             const modeIcon = document.getElementById('mode-icon');
             const modeToggleBtn = document.getElementById('btn-mode-toggle');
@@ -2116,6 +2121,31 @@
             window.setupGlobalMouseEvents();
             window.updateCanvasTransform();
             
+            // Initialiseer knop uiterlijk op basis van geladen leesmodus status
+            const modeText = document.getElementById('mode-text');
+            const modeIcon = document.getElementById('mode-icon');
+            const modeToggleBtn = document.getElementById('btn-mode-toggle');
+            
+            if (window.isReadMode) {
+                if (modeText) modeText.innerText = 'Leesmodus';
+                if (modeIcon) {
+                    modeIcon.setAttribute('data-lucide', 'eye');
+                    modeIcon.style.color = '#348b5e';
+                }
+                if (modeToggleBtn) {
+                    modeToggleBtn.className = 'px-3 py-1.5 bg-botanic-50 hover:bg-botanic-100 text-botanic-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-botanic-200';
+                }
+            } else {
+                if (modeText) modeText.innerText = 'Bewerken';
+                if (modeIcon) {
+                    modeIcon.setAttribute('data-lucide', 'edit-3');
+                    modeIcon.style.color = '#286f4c';
+                }
+                if (modeToggleBtn) {
+                    modeToggleBtn.className = 'px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200';
+                }
+            }
+
             // Explicit Event Listeners for Undo / Redo buttons
             const btnUndo = document.getElementById('btn-undo');
             const btnRedo = document.getElementById('btn-redo');
@@ -2146,7 +2176,22 @@
                             window.currentBloomMonthIndex = parseInt(data.bloomMonth) || 5;
                             localStorage.setItem('garden_bloom_month', window.currentBloomMonthIndex);
                         }
-                        // Accepteer een lege array ([]) in plaats van terug te vallen op DEFAULT_PLANTS
+                        if (data.isReadMode !== undefined) {
+                            window.isReadMode = data.isReadMode;
+                            localStorage.setItem('garden_is_read_mode', window.isReadMode);
+                            
+                            // Update knop uiterlijk direct
+                            if (modeText) modeText.innerText = window.isReadMode ? 'Leesmodus' : 'Bewerken';
+                            if (modeIcon) {
+                                modeIcon.setAttribute('data-lucide', window.isReadMode ? 'eye' : 'edit-3');
+                                modeIcon.style.color = window.isReadMode ? '#348b5e' : '#286f4c';
+                            }
+                            if (modeToggleBtn) {
+                                modeToggleBtn.className = window.isReadMode 
+                                    ? 'px-3 py-1.5 bg-botanic-50 hover:bg-botanic-100 text-botanic-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-botanic-200'
+                                    : 'px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200';
+                            }
+                        }
                         window.allPlants = Array.isArray(data.allPlants) ? data.allPlants : DEFAULT_PLANTS;
                         window.zones = Array.isArray(data.zones) ? data.zones : [];
                     } else {
@@ -2183,6 +2228,11 @@
             if (localPanels) {
                 window.panelLayouts = localPanels;
                 window.applyPanelPositions();
+            }
+
+            const localReadMode = localStorage.getItem('garden_is_read_mode');
+            if (localReadMode !== null) {
+                window.isReadMode = localReadMode === 'true';
             }
 
             window.syncPlantsWithZones();
