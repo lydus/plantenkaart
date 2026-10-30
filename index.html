@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="nl" class="h-full bg-slate-100">
 <head>
-<meta name="robots" content="noindex, nofollow">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tuinbeplantingsplan Studio</title>
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -13,48 +13,45 @@
                 extend: {
                     colors: {
                         botanic: {
-                            50: '#f2f8f4',
-                            100: '#e1f0e5',
-                            600: '#2e6f40',
-                            700: '#235732',
-                            800: '#1b4327',
+                            50: '#f2f9f5',
+                            100: '#e1f2e8',
+                            200: '#c5e5d3',
+                            400: '#7bc19c',
+                            600: '#348b5e',
+                            700: '#286f4c',
+                            800: '#23593f',
                         }
                     }
                 }
             }
         }
     </script>
-    <!-- Google Fonts Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- PapaParse for CSV reading -->
+
+    <!-- PapaParse (voor Google Sheet / CSV parsing) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            overflow: hidden;
-            user-select: none;
-        }
         .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+            width: 5px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+            background: rgba(0, 0, 0, 0.3);
         }
         .floating-panel {
             position: absolute;
             z-index: 40;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         }
         .panel-resize-handle {
             position: absolute;
@@ -62,10 +59,7 @@
             bottom: 0;
             width: 14px;
             height: 14px;
-            cursor: nwse-resize;
-            background: linear-gradient(135deg, transparent 50%, #cbd5e1 50%);
-            border-bottom-right-radius: 0.75rem;
-            z-index: 45;
+            cursor: se-resize;
         }
         .zone-resize-handle {
             position: absolute;
@@ -73,33 +67,33 @@
             bottom: 0;
             width: 16px;
             height: 16px;
-            cursor: nwse-resize;
-            background: linear-gradient(135deg, transparent 50%, #2e6f40 50%);
-            border-bottom-right-radius: 1rem;
-            z-index: 25;
+            cursor: se-resize;
+            border-right: 3px solid rgba(0,0,0,0.2);
+            border-bottom: 3px solid rgba(0,0,0,0.2);
+            border-bottom-right-radius: 8px;
         }
+        /* Subtiel rasterpatroon voor de achtergrond van de tuinkaart */
         #canvas-viewport {
-            cursor: grab;
             background-color: #f8fafc;
-            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
-            background-size: 24px 24px;
-        }
-        #canvas-viewport:active {
-            cursor: grabbing;
+            background-image: 
+                radial-gradient(circle, #cbd5e1 1px, transparent 1px),
+                linear-gradient(to right, rgba(226, 232, 240, 0.6) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(226, 232, 240, 0.6) 1px, transparent 1px);
+            background-size: 20px 20px, 100px 100px, 100px 100px;
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 h-screen w-screen flex flex-col">
+<body class="h-full flex flex-col overflow-hidden text-slate-800 antialiased select-none">
 
-    <!-- Top Navbar -->
-    <header class="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between flex-shrink-0 z-50 shadow-sm">
+    <!-- Top Navigation Header -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 flex items-center justify-between z-30 shadow-sm flex-shrink-0">
         <div class="flex items-center space-x-3">
-            <div class="w-9 h-9 rounded-xl bg-botanic-700 flex items-center justify-center text-white shadow-md">
-                <i data-lucide="flower-2" class="w-5 h-5"></i>
+            <div class="w-8 h-8 rounded-xl bg-botanic-700 text-white flex items-center justify-center shadow-md shadow-botanic-700/20">
+                <i data-lucide="sprout" class="w-5 h-5"></i>
             </div>
             <div>
                 <h1 class="font-bold text-slate-800 text-sm leading-tight">Tuinbeplantingsplan Studio</h1>
-                <p class="text-[11px] text-slate-500">Live Cloud Sync Active</p>
+                <p class="text-[11px] text-slate-500">Ontwerp & Beplantingsbeheer</p>
             </div>
         </div>
 
@@ -107,35 +101,40 @@
             <!-- Cloud Sync Status Badge -->
             <div id="cloud-status" class="flex items-center space-x-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
                 <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
-                <span id="cloud-status-text">Verbinden met Firebase...</span>
+                <span id="cloud-status-text">Verbinden...</span>
             </div>
 
-            <div class="hidden md:flex items-center space-x-1.5 text-xs text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
-                <i data-lucide="move" class="w-3.5 h-3.5 text-slate-400"></i>
-                <span>Sleep om te pannen</span>
+            <!-- Leesmodus / Bewerkmodus Schakelaar -->
+            <button id="btn-mode-toggle" onclick="window.toggleAppMode()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200" title="Wissel tussen bewerk- en leesmodus">
+                <i id="mode-icon" data-lucide="edit-3" class="w-3.5 h-3.5 text-botanic-700"></i>
+                <span id="mode-text">Bewerken</span>
+            </button>
+
+            <!-- Undo / Redo Buttons -->
+            <div id="undo-redo-group" class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                <button id="btn-undo" class="p-1.5 hover:bg-slate-200 text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent rounded transition cursor-pointer" title="Ongedaan maken (Ctrl+Z)">
+                    <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
+                </button>
+                <div class="h-4 w-px bg-slate-300 mx-0.5"></div>
+                <button id="btn-redo" class="p-1.5 hover:bg-slate-200 text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent rounded transition cursor-pointer" title="Opnieuw (Ctrl+Y)">
+                    <i data-lucide="redo-2" class="w-3.5 h-3.5"></i>
+                </button>
             </div>
-            <button onclick="resetCanvasView()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5" title="Centreer kaart">
+
+            <button onclick="window.resetCanvasView()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5" title="Centreer kaart">
                 <i data-lucide="compass" class="w-3.5 h-3.5"></i>
                 <span>Centreer</span>
             </button>
-            <button onclick="toggleAllZones()" id="btn-toggle-all" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5">
-                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
-                <span>Alles aan/uit</span>
-            </button>
-            <button onclick="resetAllPanelPositions()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5" title="Reset panelen">
-                <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
-                <span>Reset Panelen</span>
-            </button>
-            <button onclick="forceReloadSheetAndReset()" class="px-3 py-1.5 bg-botanic-700 hover:bg-botanic-800 text-white rounded-lg text-xs font-medium transition flex items-center space-x-1.5 shadow-sm" title="Herlaad planten uit Sheet">
-                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                <span>Sheet Vernieuwen</span>
+            <button onclick="window.exportGardenStudio()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center space-x-1.5 shadow-sm" title="Exporteer als zelfstandig HTML-bestand">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Exporteer Tuinbestand</span>
             </button>
         </div>
     </header>
 
     <!-- Main Workspace Container -->
     <div id="canvas-viewport" class="relative flex-grow overflow-hidden"
-         onmousedown="startPan(event)" onwheel="handleZoom(event)">
+         onmousedown="window.startPan(event)" onwheel="window.handleZoom(event)">
 
         <!-- Infinite Zoomable/Pannable Design Workspace -->
         <div id="design-canvas" class="absolute overflow-visible origin-top-left pointer-events-none" 
@@ -145,105 +144,317 @@
             <div id="canvas-content-container" class="absolute inset-0 pointer-events-auto"></div>
         </div>
 
-        <!-- FLOATING PANEL 1: Filters & Plant Catalogus -->
+        <!-- FLOATING PANEL 1: Database & Invoerspoor -->
         <div id="floating-filter-panel" class="floating-panel bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200 flex flex-col overflow-hidden"
-             style="left: 30px; top: 30px; width: 320px; height: 580px;"
-             onmousedown="event.stopPropagation()">
+             style="left: 30px; top: 70px; width: 340px; height: 580px;"
+             onmousedown="event.stopPropagation()"
+             onwheel="event.stopPropagation()">
             
             <!-- Panel Header (Draggable) -->
             <div class="panel-header bg-slate-100/90 border-b border-slate-200 px-3.5 py-2.5 flex items-center justify-between cursor-move flex-shrink-0"
-                 onmousedown="initPanelDrag(event, 'filter')">
+                 onmousedown="window.initPanelDrag(event, 'filter')">
                 <div class="flex items-center space-x-2">
-                    <i data-lucide="search" class="w-4 h-4 text-botanic-700"></i>
-                    <span class="font-bold text-slate-800 text-xs">Plantendatabase (Google Sheet)</span>
+                    <i data-lucide="database" class="w-4 h-4 text-botanic-700"></i>
+                    <span class="font-bold text-slate-800 text-xs">Plantendatabase & Invoer</span>
                 </div>
                 <div class="flex items-center space-x-1">
-                    <button onclick="togglePanelMinimize('filter', event)" class="p-1 hover:bg-slate-200 rounded text-slate-500 transition minimize-btn" title="Minimizeren">
+                    <button onclick="window.togglePanelMinimize('filter', event)" class="p-1 hover:bg-slate-200 rounded text-slate-500 transition minimize-btn" title="Minimizeren">
                         <i data-lucide="minimize-2" class="w-3.5 h-3.5"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Panel Body Content -->
-            <div class="panel-body-content flex-grow flex flex-col overflow-hidden p-3.5 space-y-3">
-                <div id="sheet-status" class="text-[11px] text-slate-500 font-medium">Resultaten: Laden...</div>
-                
-                <!-- Search Input -->
-                <div class="relative">
-                    <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
-                    <input type="text" id="plant-search" oninput="filterPlants()" placeholder="Zoek op plantnaam, type..." 
-                           class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-botanic-600/30">
-                </div>
-
-                <!-- Filters -->
-                <div class="grid grid-cols-2 gap-2">
-                    <select id="filter-type" onchange="filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                        <option value="">Alle typen</option>
-                    </select>
-                    <select id="filter-color" onchange="filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                        <option value="">Alle kleuren</option>
-                    </select>
-                </div>
-
-                <!-- Plants List Container -->
-                <div id="plant-catalog-list" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                    <!-- Dynamic Items -->
-                </div>
-            </div>
-
-            <!-- Resize Handle -->
-            <div class="panel-resize-handle" onmousedown="initPanelResize(event, 'filter')"></div>
-        </div>
-
-        <!-- FLOATING PANEL 2: Zone & Plant Manager -->
-        <div id="floating-manager-panel" class="floating-panel bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200 flex flex-col overflow-hidden"
-             style="left: 370px; top: 30px; width: 340px; height: 580px;"
-             onmousedown="event.stopPropagation()">
-            
-            <!-- Panel Header (Draggable) -->
-            <div class="panel-header bg-slate-100/90 border-b border-slate-200 px-3.5 py-2.5 flex items-center justify-between cursor-move flex-shrink-0"
-                 onmousedown="initPanelDrag(event, 'manager')">
-                <div class="flex items-center space-x-2">
-                    <i data-lucide="layers" class="w-4 h-4 text-botanic-700"></i>
-                    <span class="font-bold text-slate-800 text-xs">Vakken Beheer (Firebase Locaties)</span>
-                </div>
-                <div class="flex items-center space-x-1">
-                    <button onclick="togglePanelMinimize('manager', event)" class="p-1 hover:bg-slate-200 rounded text-slate-500 transition minimize-btn" title="Minimizeren">
-                        <i data-lucide="minimize-2" class="w-3.5 h-3.5"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Panel Body Content -->
-            <div class="panel-body-content flex-grow flex flex-col overflow-hidden p-3.5 space-y-3">
-                <div class="flex items-center justify-between flex-shrink-0">
-                    <span id="designer-zone-title" class="text-xs font-bold text-slate-800 truncate">Selecteer vak op canvas</span>
-                </div>
-
-                <!-- Plants in Selected Zone -->
-                <div id="designer-zone-plants" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                    <p class="text-xs text-slate-400 text-center py-6">Klik op een vak in de tuinkaart om de inhoud te beheren.</p>
-                </div>
-
-                <!-- Add Selected Plant to Zone Button -->
-                <button id="btn-add-plant-to-zone" onclick="addSelectedPlantToActiveZone()" class="w-full py-2 bg-botanic-700 hover:bg-botanic-800 text-white rounded-xl text-xs font-medium transition shadow-sm hidden flex items-center justify-center space-x-1.5 flex-shrink-0">
-                    <i data-lucide="plus" class="w-4 h-4"></i>
-                    <span>Plant Toevoegen aan Vak</span>
+            <!-- Panel Navigation Tabs -->
+            <div class="flex border-b border-slate-200 text-xs font-semibold bg-slate-50 flex-shrink-0">
+                <button id="tab-btn-catalog" onclick="window.switchPanelTab('catalog')" class="flex-1 py-2 border-b-2 border-botanic-700 text-botanic-700 bg-white transition flex items-center justify-center space-x-1">
+                    <i data-lucide="list" class="w-3.5 h-3.5"></i>
+                    <span>Overzicht</span>
+                </button>
+                <button id="tab-btn-reserve" onclick="window.switchPanelTab('reserve')" class="flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1">
+                    <i data-lucide="bookmark" class="w-3.5 h-3.5"></i>
+                    <span>Reservelijst</span>
+                </button>
+                <button id="tab-btn-form" onclick="window.switchPanelTab('form')" class="flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                    <span>Invoer</span>
                 </button>
             </div>
 
+            <!-- Panel Body Content -->
+            <div class="panel-body-content flex-grow flex flex-col overflow-hidden p-3.5 space-y-3">
+                
+                <!-- TAB 1: CATALOG OVERVIEW -->
+                <div id="tab-content-catalog" class="flex-grow flex flex-col space-y-3 overflow-hidden">
+                    <div class="flex items-center justify-between">
+                        <div id="sheet-status" class="text-[11px] text-slate-500 font-medium">Resultaten: 0 planten</div>
+                        <button onclick="window.openCsvImportModal()" class="text-[11px] text-emerald-700 font-semibold hover:underline flex items-center space-x-1">
+                            <i data-lucide="upload" class="w-3 h-3"></i>
+                            <span>Upload/Link CSV</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Active Zone Filter Indicator -->
+                    <div id="active-zone-filter-banner" class="hidden bg-botanic-100/80 border border-botanic-300 rounded-lg px-2.5 py-1.5 flex items-center justify-between text-xs text-botanic-800 font-semibold">
+                        <div class="flex items-center space-x-1.5 truncate">
+                            <i data-lucide="map-pin" class="w-3.5 h-3.5 flex-shrink-0 text-botanic-700"></i>
+                            <span id="active-zone-filter-name" class="truncate">Geselecteerd vak: ...</span>
+                        </div>
+                        <button onclick="window.clearSelectedZoneFilter()" class="text-[10px] bg-white/80 hover:bg-white text-botanic-800 px-1.5 py-0.5 rounded border border-botanic-300 transition flex items-center space-x-0.5 flex-shrink-0">
+                            <i data-lucide="x" class="w-3 h-3"></i>
+                            <span>Toon alles</span>
+                        </button>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
+                        <input type="text" id="plant-search" oninput="window.filterPlants()" placeholder="Zoek op plantnaam, opmerking..." 
+                               class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-botanic-600/30">
+                    </div>
+
+                    <!-- Filters Grid (Uitgebreide opties) -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="filter-type" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                            <option value="">Alle typen</option>
+                        </select>
+                        <select id="filter-color" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                            <option value="">Alle kleuren</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="filter-light" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                            <option value="">Alle standplaatsen</option>
+                        </select>
+                        <select id="filter-owned" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                            <option value="">Heb ik? (Alle)</option>
+                            <option value="ja">Ja (In mijn tuin)</option>
+                            <option value="nee">Nee (In bezit=Nee)</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="filter-nursery" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                            <option value="">Alle kwekers / shops</option>
+                        </select>
+                        <input type="text" id="filter-height" oninput="window.filterPlants()" placeholder="Filter op hoogte..." class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <input type="text" id="filter-bloom" oninput="window.filterPlants()" placeholder="Filter op bloeitijd (bijv. Mei, Zomer)..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                    </div>
+
+                    <div class="flex items-center justify-between pt-0.5">
+                        <button onclick="window.resetFilters()" class="text-[10px] text-slate-500 hover:text-slate-800 transition flex items-center space-x-1 px-1 py-0.5 rounded hover:bg-slate-100" title="Reset filters">
+                            <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+                            <span>Filters resetten</span>
+                        </button>
+                        <button onclick="window.deleteAllPlants()" class="text-[10px] text-slate-400 hover:text-red-600 transition flex items-center space-x-1 px-1 py-0.5 rounded hover:bg-red-50" title="Alle planten wissen">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                            <span>Alle planten wissen</span>
+                        </button>
+                    </div>
+
+                    <!-- Plants List Container -->
+                    <div id="plant-catalog-list" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                        <!-- Dynamic Items -->
+                    </div>
+                </div>
+
+                <!-- TAB 2: RESERVELIJSCH / NOG AAN TE SCHAFFEN -->
+                <div id="tab-content-reserve" class="flex-grow flex flex-col space-y-3 overflow-hidden hidden">
+                    <div class="bg-amber-50/80 border border-amber-200 p-2.5 rounded-xl text-amber-900 flex items-center justify-between">
+                        <div>
+                            <p class="font-bold text-xs">Nog aan te schaffen</p>
+                            <p class="text-[10px] text-amber-800">Planten met "nee" bij "heb ik?" of vak "Reservelijst".</p>
+                        </div>
+                        <span id="reserve-count-badge" class="bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full text-xs">0</span>
+                    </div>
+
+                    <!-- Search Reserve List -->
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
+                        <input type="text" id="reserve-search" oninput="window.renderReserveList()" placeholder="Zoek in reservelijst..." 
+                               class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+                    </div>
+
+                    <!-- Reserve List Container -->
+                    <div id="reserve-catalog-list" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                        <!-- Dynamic Items -->
+                    </div>
+                </div>
+
+                <!-- TAB 3: INVOERSCHERM / PLANT TOEVOEGEN OF BEWERKEN -->
+                <div id="tab-content-form" class="flex-grow flex flex-col space-y-3 overflow-y-auto custom-scrollbar pr-2 max-h-[calc(100vh-220px)] hidden text-xs">
+                    <div class="bg-botanic-50 border border-botanic-100 p-2.5 rounded-xl text-slate-700 space-y-1">
+                        <p id="form-mode-title" class="font-bold text-botanic-800 text-xs">Nieuwe Plant Invoeren</p>
+                        <p class="text-[11px] text-slate-600">Voer plantgegevens in. Afbeeldingen worden automatisch van de web-link opgehaald.</p>
+                    </div>
+
+                    <input type="hidden" id="form-plant-id" value="">
+
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Plantnaam *</label>
+                        <input type="text" id="form-plant-name" placeholder="bijv. Tongvaren" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-botanic-600/30">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1">Heb ik? *</label>
+                            <select id="form-plant-owned" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
+                                <option value="ja">Ja (In mijn tuin)</option>
+                                <option value="nee">Nee (Nog aan te schaffen)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1">Aantal</label>
+                            <input type="number" id="form-plant-quantity" min="1" placeholder="1" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1">Type / Categorie</label>
+                            <select id="form-plant-type" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
+                                <option value="Vaste plant">Vaste plant</option>
+                                <option value="Heester">Heester</option>
+                                <option value="Boom">Boom</option>
+                                <option value="Klimplant">Klimplant</option>
+                                <option value="Siergras">Siergras</option>
+                                <option value="Varen">Varen</option>
+                                <option value="Bolgewas">Bolgewas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1">Bloemkleur</label>
+                            <select id="form-plant-color" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none capitalize">
+                                <option value="groen">Groen</option>
+                                <option value="paars">Paars</option>
+                                <option value="roze">Roze</option>
+                                <option value="geel">Geel</option>
+                                <option value="wit">Wit</option>
+                                <option value="blauw">Blauw</option>
+                                <option value="rood">Rood</option>
+                                <option value="oranje">Oranje</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1">Standplaats</label>
+                            <select id="form-plant-light" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
+                                <option value="Halfschaduw / Schaduw">Halfschaduw / Schaduw</option>
+                                <option value="Zon">Zon</option>
+                                <option value="Schaduw">Schaduw</option>
+                                <option value="Zon / Halfschaduw">Zon / Halfschaduw</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-medium text-slate-700 mb-1">Hoogte</label>
+                            <input type="text" id="form-plant-height" placeholder="bijv. 40-50cm" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Bloeitijd</label>
+                        <input type="text" id="form-plant-bloom" placeholder="bijv. Mei - Juli" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Tuinvak(ken)</label>
+                        <input type="text" id="form-plant-zones" placeholder="bijv. tongvaren, appel" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Kweker / Waar te koop?</label>
+                        <input type="text" id="form-plant-nursery" placeholder="bijv. Natuurlijk Sterker, Directplant" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Informatie / Web Link (URL)</label>
+                        <input type="url" id="form-plant-link" placeholder="https://..." class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Eigen Afbeelding URL (Optioneel)</label>
+                        <input type="url" id="form-plant-custom-image" placeholder="Plak hier direct een foto URL..." class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">Opmerkingen / Notities</label>
+                        <textarea id="form-plant-notes" rows="2" placeholder="Bijv. kalkrijke grond gewenst, wintergroen..." class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none"></textarea>
+                    </div>
+
+                    <div class="pt-2 pb-4 flex items-center space-x-2">
+                        <button onclick="window.savePlantFromForm()" class="flex-1 py-2 bg-botanic-700 hover:bg-botanic-800 text-white font-medium rounded-xl transition flex items-center justify-center space-x-1 shadow-sm">
+                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                            <span>Plant Opslaan</span>
+                        </button>
+                        <button onclick="window.clearPlantForm()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl transition">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
             <!-- Resize Handle -->
-            <div class="panel-resize-handle" onmousedown="initPanelResize(event, 'manager')"></div>
+            <div class="panel-resize-handle" onmousedown="window.initPanelResize(event, 'filter')"></div>
+        </div>
+
+        <!-- FLOATING PANEL 2: Bloeikalender -->
+        <div id="floating-bloom-panel" class="floating-panel bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200 flex flex-col overflow-hidden"
+             style="left: 390px; top: 70px; width: 300px; height: auto;"
+             onmousedown="event.stopPropagation()"
+             onwheel="event.stopPropagation()">
+            
+            <!-- Panel Header (Draggable) -->
+            <div class="panel-header bg-slate-100/90 border-b border-slate-200 px-3.5 py-2.5 flex items-center justify-between cursor-move flex-shrink-0"
+                 onmousedown="window.initPanelDrag(event, 'bloom')">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="flower-2" class="w-4 h-4 text-botanic-700"></i>
+                    <span class="font-bold text-slate-800 text-xs">Bloeikalender Maandoverzicht</span>
+                </div>
+            </div>
+
+            <!-- Panel Body Content -->
+            <div class="p-3.5 space-y-3 text-xs">
+                <div class="flex items-center justify-between">
+                    <span id="bloom-month-label" class="font-bold text-botanic-800 text-sm">Mei</span>
+                    <span id="bloom-count-badge" class="bg-botanic-100 text-botanic-800 font-bold px-2 py-0.5 rounded-full text-xs">0 in bloei</span>
+                </div>
+
+                <!-- Slider per maand -->
+                <input type="range" id="bloom-month-slider" min="1" max="12" value="5" step="1"
+                       oninput="window.updateBloomMonth(this.value)"
+                       class="w-full accent-botanic-600 cursor-pointer h-2 bg-slate-200 rounded-lg">
+
+                <div class="flex justify-between text-[10px] text-slate-400 font-medium px-1">
+                    <span>Jan</span>
+                    <span>Apr</span>
+                    <span>Jul</span>
+                    <span>Okt</span>
+                    <span>Dec</span>
+                </div>
+
+                <div id="bloom-active-list" class="max-h-36 overflow-y-auto custom-scrollbar space-y-1.5 pt-1 border-t border-slate-100">
+                    <!-- Dynamic blooming plants list -->
+                </div>
+            </div>
+
+            <!-- Resize Handle -->
+            <div class="panel-resize-handle" onmousedown="window.initPanelResize(event, 'bloom')"></div>
         </div>
 
     </div>
 
     <!-- Plant Detail Modal -->
-    <div id="plant-detail-modal" class="fixed inset-0 bg-slate-900/10 backdrop-blur-[1px] z-50 hidden flex items-center justify-end p-6" onclick="handleModalBackdropClick(event)">
+    <div id="plant-detail-modal" class="fixed inset-0 bg-slate-900/10 backdrop-blur-[1px] z-50 hidden flex items-center justify-end p-6" onclick="window.handleModalBackdropClick(event)">
         <div id="plant-detail-dialog" class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200 flex flex-col h-[85vh]">
             <div class="bg-botanic-700 text-white px-5 py-3.5 flex items-center justify-between flex-shrink-0">
                 <h3 id="modal-plant-name" class="font-bold text-sm">Plant Informatie</h3>
-                <button onclick="closePlantDetail()" class="text-white/80 hover:text-white p-1 rounded-lg transition">
+                <button onclick="window.closePlantDetail()" class="text-white/80 hover:text-white p-1 rounded-lg transition">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
@@ -254,18 +465,83 @@
                 <div id="modal-size-container" class="flex flex-col space-y-1.5 text-xs">
                     <!-- Dynamic Plant Size Slider inside Popup -->
                 </div>
-                <button onclick="closePlantDetail()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl text-xs transition">Sluiten</button>
+                <button onclick="window.closePlantDetail()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl text-xs transition">Sluiten</button>
             </div>
         </div>
     </div>
 
-    <!-- Firebase SDK & Cloud Sync Logic -->
+    <!-- CSV Import Modal -->
+    <div id="csv-import-modal" class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target.id==='csv-import-modal') window.closeCsvImportModal();">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 space-y-4 text-xs">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center space-x-2">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                        <i data-lucide="file-spread-sheet" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-800 text-sm">Tuinplanten Gegevens Importeren</h3>
+                </div>
+                <button onclick="window.closeCsvImportModal()" class="text-slate-400 hover:text-slate-700 transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <p class="text-slate-600 leading-relaxed">
+                Klik op de knop hieronder om direct de actuele plantendatabase van het Google Sheet op te halen en in te laden.
+            </p>
+
+            <!-- Vaste knop voor de specifieke Google Sheet -->
+            <div class="space-y-2 pt-2">
+                <button onclick="window.fetchDefaultGardenSheet()" class="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl transition flex items-center justify-center space-x-2 shadow-sm text-xs">
+                    <i data-lucide="download-cloud" class="w-4 h-4"></i>
+                    <span>Laad Gegevens van Google Sheet</span>
+                </button>
+            </div>
+
+            <div id="csv-preview-summary" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-900 p-3 rounded-xl space-y-1">
+                <p id="csv-preview-count" class="font-bold text-xs"></p>
+                <p class="text-[11px] text-emerald-800">Klaar om te verwerken en te synchroniseren met Firebase.</p>
+            </div>
+
+            <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button onclick="window.closeCsvImportModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition">Annuleren</button>
+                <button id="btn-confirm-import" onclick="window.executeCsvImport()" disabled class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-medium rounded-xl transition shadow-sm">
+                    Importeren & Opslaan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal for Deletion -->
+    <div id="delete-confirm-modal" class="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="if(event.target.id==='delete-confirm-modal') window.closeDeleteConfirmModal();">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 border border-slate-200 space-y-4 text-xs">
+            <div class="flex items-center space-x-3 text-red-600">
+                <div class="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-sm">Plant verwijderen</h3>
+                    <p class="text-[11px] text-slate-500">Weet je dit zeker?</p>
+                </div>
+            </div>
+            <p id="delete-confirm-message" class="text-slate-600 leading-relaxed">
+                Weet je zeker dat je deze plant wilt verwijderen?
+            </p>
+            <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button onclick="window.closeDeleteConfirmModal()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition">
+                    Annuleren
+                </button>
+                <button id="btn-execute-delete" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition shadow-sm">
+                    Ja, Verwijder
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script Module -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQpPx2dcL_HkAnxs_PhSg582oFExs3fyQsFMsCZPzKG-NfYnuRYRiVNjEMGXDNesr1aYqTXBZvTn11I/pubhtml";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDAzU-GuXINIx0W-p9U1UR4JYh0UVezclo",
@@ -277,47 +553,1578 @@
             measurementId: "G-GVBR3XRBWR"
         };
 
+        const DEFAULT_PLANTS = [
+            { id: 'plant-1', name: 'Tongvaren', type: 'Varen', color: 'groen', light: 'Halfschaduw / Schaduw', height: '30-40cm', bloom: 'Groen blijvend', zones: 'tongvaren, appel', owned: 'ja', quantity: '1', link: '', nursery: 'Natuurlijk Sterker', notes: '', image: '' },
+            { id: 'plant-2', name: 'Sierappel', type: 'Boom', color: 'roze', light: 'Zon / Halfschaduw', height: '3-4m', bloom: 'Mei', zones: 'appel', owned: 'ja', quantity: '1', link: '', nursery: '', notes: '', image: '' },
+            { id: 'plant-3', name: 'Zonnehoed', type: 'Vaste plant', color: 'paars', light: 'Zon', height: '70cm', bloom: 'Juli - Sept', zones: 'zonnehoek', owned: 'ja', quantity: '3', link: '', nursery: '', notes: '', image: '' }
+        ];
+
         window.allPlants = [];
         window.zones = [];
         window.panelLayouts = {
-            filter: { x: 30, y: 70, w: 320, h: 580, minimized: false },
-            manager: { x: 370, y: 70, w: 340, h: 580, minimized: false }
+            filter: { x: 30, y: 70, w: 340, h: 580, minimized: false },
+            bloom: { x: 390, y: 70, w: 300, h: 220, minimized: false }
         };
 
         window.selectedZoneId = null;
         window.selectedPlantCatalogId = null;
         window.activeModalPlantInstance = null;
+        window.currentBloomMonthIndex = parseInt(localStorage.getItem('garden_bloom_month')) || 5;
+        window.isReadMode = false;
+        
+        // --- Color & Image Helpers ---
+        window.getPlantColorStyle = function(colorName) {
+            const map = {
+                groen: { bg: '#348b5e', border: '#23593f', text: '#ffffff' },
+                paars: { bg: '#8b5cf6', border: '#6d28d9', text: '#ffffff' },
+                roze: { bg: '#ec4899', border: '#db2777', text: '#ffffff' },
+                geel: { bg: '#eab308', border: '#ca8a04', text: '#ffffff' },
+                wit: { bg: '#f8fafc', border: '#cbd5e1', text: '#1e293b' },
+                blauw: { bg: '#3b82f6', border: '#2563eb', text: '#ffffff' },
+                rood: { bg: '#ef4444', border: '#dc2626', text: '#ffffff' },
+                oranje: { bg: '#f97316', border: '#ea580c', text: '#ffffff' }
+            };
+            return map[(colorName || 'groen').toLowerCase()] || map.groen;
+        };
 
-        window.panX = 150;
-        window.panY = 100;
+        window.getPlantImageUrl = function(plant) {
+            if (plant.image && plant.image.startsWith('http')) {
+                return plant.image;
+            }
+            if (plant.link && plant.link.startsWith('http') && !plant.link.includes('google.com')) {
+                return plant.link;
+            }
+            return 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=400&q=80';
+        };
+
+        window.extractImageFromUrl = async function(plant) {
+            if (plant.image && plant.image.startsWith('http')) return plant.image;
+            return '';
+        };
+
+        // --- Undo / Redo Stacks ---
+        window.undoStack = [];
+        window.redoStack = [];
+        const MAX_HISTORY = 30;
+
+        window.pushStateToUndo = function() {
+            const currentState = {
+                allPlants: JSON.parse(JSON.stringify(window.allPlants)),
+                zones: JSON.parse(JSON.stringify(window.zones))
+            };
+            window.undoStack.push(currentState);
+            if (window.undoStack.length > MAX_HISTORY) {
+                window.undoStack.shift();
+            }
+            window.redoStack = []; // Clear redo stack on new action
+            window.updateUndoRedoUI();
+        };
+
+        window.updateUndoRedoUI = function() {
+            const btnUndo = document.getElementById('btn-undo');
+            const btnRedo = document.getElementById('btn-redo');
+            if (btnUndo) btnUndo.disabled = window.undoStack.length === 0;
+            if (btnRedo) btnRedo.disabled = window.redoStack.length === 0;
+        };
+
+        window.undo = function() {
+            if (window.undoStack.length === 0) return;
+            const currentState = {
+                allPlants: JSON.parse(JSON.stringify(window.allPlants)),
+                zones: JSON.parse(JSON.stringify(window.zones))
+            };
+            window.redoStack.push(currentState);
+            
+            const prevState = window.undoStack.pop();
+            window.allPlants = prevState.allPlants;
+            window.zones = prevState.zones;
+
+            window.syncPlantsWithZones();
+            window.saveState();
+            window.populateFilterDropdowns();
+            window.filterPlants();
+            window.renderReserveList();
+            window.renderDesignerCanvas();
+            window.updateUndoRedoUI();
+        };
+
+        window.redo = function() {
+            if (window.redoStack.length === 0) return;
+            const currentState = {
+                allPlants: JSON.parse(JSON.stringify(window.allPlants)),
+                zones: JSON.parse(JSON.stringify(window.zones))
+            };
+            window.undoStack.push(currentState);
+
+            const nextState = window.redoStack.pop();
+            window.allPlants = nextState.allPlants;
+            window.zones = nextState.zones;
+
+            window.syncPlantsWithZones();
+            window.saveState();
+            window.populateFilterDropdowns();
+            window.filterPlants();
+            window.renderReserveList();
+            window.renderDesignerCanvas();
+            window.updateUndoRedoUI();
+        };
+
+        let parsedCsvPlants = [];
+        let catalogDragGhost = null;
+        let activeCatalogDragPlant = null;
+
+        // Pan & Zoom state
+        window.panX = 0;
+        window.panY = 0;
         window.scale = 1;
         window.isPanning = false;
         window.startPanX = 0;
         window.startPanY = 0;
-
-        window.dragTarget = null;
         window.dragType = null;
+        window.dragTarget = null;
         window.dragOffsetX = 0;
         window.dragOffsetY = 0;
+        window.dragStartX = 0;
+        window.dragStartY = 0;
         window.activePanelKey = null;
 
         let db = null;
         let auth = null;
-        let saveTimeout = null;
         let isCloudConnected = false;
-        let cloudDataLoaded = false;
-        let rawSheetCache = null;
 
+        // --- Cloud Status & State Saving Helpers ---
+        window.updateCloudStatus = function(status, text) {
+            const statusEl = document.getElementById('cloud-status');
+            const statusTextEl = document.getElementById('cloud-status-text');
+            if (!statusEl || !statusTextEl) return;
+
+            statusTextEl.innerText = text;
+            if (status === 'synced') {
+                statusEl.className = 'flex items-center space-x-1.5 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200';
+                statusEl.innerHTML = '<i data-lucide="cloud" class="w-3.5 h-3.5"></i><span id="cloud-status-text">Verbonden</span>';
+            } else {
+                statusEl.className = 'flex items-center space-x-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200';
+                statusEl.innerHTML = '<i data-lucide="cloud-off" class="w-3.5 h-3.5"></i><span id="cloud-status-text">Lokaal</span>';
+            }
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.saveState = function() {
+            localStorage.setItem('garden_plants', JSON.stringify(window.allPlants));
+            localStorage.setItem('garden_zones', JSON.stringify(window.zones));
+            localStorage.setItem('garden_panels_layout', JSON.stringify(window.panelLayouts));
+            localStorage.setItem('garden_bloom_month', window.currentBloomMonthIndex);
+
+            if (db && isCloudConnected) {
+                const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
+                setDoc(stateDocRef, {
+                    allPlants: window.allPlants,
+                    zones: window.zones,
+                    panelLayouts: window.panelLayouts,
+                    bloomMonth: window.currentBloomMonthIndex,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true }).catch(err => {
+                    console.warn("Cloud save warning:", err);
+                });
+            }
+        };
+
+        // --- Panel & View Helpers ---
+        window.applyPanelPositions = function() {
+            const filterPanel = document.getElementById('floating-filter-panel');
+            if (filterPanel && window.panelLayouts.filter) {
+                filterPanel.style.left = `${window.panelLayouts.filter.x}px`;
+                filterPanel.style.top = `${window.panelLayouts.filter.y}px`;
+                filterPanel.style.width = `${window.panelLayouts.filter.w}px`;
+                filterPanel.style.height = `${window.panelLayouts.filter.h}px`;
+            }
+            const bloomPanel = document.getElementById('floating-bloom-panel');
+            if (bloomPanel && window.panelLayouts.bloom) {
+                bloomPanel.style.left = `${window.panelLayouts.bloom.x}px`;
+                bloomPanel.style.top = `${window.panelLayouts.bloom.y}px`;
+                bloomPanel.style.width = `${window.panelLayouts.bloom.w}px`;
+                bloomPanel.style.height = `${window.panelLayouts.bloom.h}px`;
+            }
+        };
+
+        window.updateCanvasTransform = function() {
+            const canvas = document.getElementById('design-canvas');
+            if (canvas) {
+                canvas.style.transform = `translate(${window.panX}px, ${window.panY}px) scale(${window.scale})`;
+            }
+        };
+
+        window.resetCanvasView = function() {
+            window.panX = 0;
+            window.panY = 0;
+            window.scale = 1;
+            window.updateCanvasTransform();
+        };
+
+        window.startPan = function(e) {
+            if (e.target.closest('.floating-panel') || e.target.closest('.plant-dot') || e.target.closest('header')) return;
+            window.isPanning = true;
+            window.startPanX = e.clientX - window.panX;
+            window.startPanY = e.clientY - window.panY;
+        };
+
+        window.handleZoom = function(e) {
+            e.preventDefault();
+            const zoomIntensity = 0.1;
+            const prevScale = window.scale;
+            if (e.deltaY < 0) {
+                window.scale = Math.min(2.5, window.scale + zoomIntensity);
+            } else {
+                window.scale = Math.max(0.3, window.scale - zoomIntensity);
+            }
+            window.updateCanvasTransform();
+        };
+
+        window.toggleAppMode = function() {
+            window.isReadMode = !window.isReadMode;
+            const modeText = document.getElementById('mode-text');
+            const modeIcon = document.getElementById('mode-icon');
+            const modeToggleBtn = document.getElementById('btn-mode-toggle');
+            
+            if (window.isReadMode) {
+                if (modeText) modeText.innerText = 'Leesmodus';
+                if (modeIcon) {
+                    modeIcon.setAttribute('data-lucide', 'eye');
+                    modeIcon.style.color = '#348b5e';
+                }
+                if (modeToggleBtn) {
+                    modeToggleBtn.className = 'px-3 py-1.5 bg-botanic-50 hover:bg-botanic-100 text-botanic-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-botanic-200';
+                }
+            } else {
+                if (modeText) modeText.innerText = 'Bewerken';
+                if (modeIcon) {
+                    modeIcon.setAttribute('data-lucide', 'edit-3');
+                    modeIcon.style.color = '#286f4c';
+                }
+                if (modeToggleBtn) {
+                    modeToggleBtn.className = 'px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200';
+                }
+            }
+            window.filterPlants();
+            window.renderDesignerCanvas();
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.switchPanelTab = function(tabName) {
+            const tabCatalog = document.getElementById('tab-content-catalog');
+            const tabReserve = document.getElementById('tab-content-reserve');
+            const tabForm = document.getElementById('tab-content-form');
+            
+            const btnCatalog = document.getElementById('tab-btn-catalog');
+            const btnReserve = document.getElementById('tab-btn-reserve');
+            const btnForm = document.getElementById('tab-btn-form');
+
+            if (tabCatalog) tabCatalog.classList.add('hidden');
+            if (tabReserve) tabReserve.classList.add('hidden');
+            if (tabForm) tabForm.classList.add('hidden');
+
+            if (btnCatalog) btnCatalog.className = 'flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1';
+            if (btnReserve) btnReserve.className = 'flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1';
+            if (btnForm) btnForm.className = 'flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1';
+
+            if (tabName === 'catalog') {
+                if (tabCatalog) tabCatalog.classList.remove('hidden');
+                if (btnCatalog) btnCatalog.className = 'flex-1 py-2 border-b-2 border-botanic-700 text-botanic-700 bg-white transition flex items-center justify-center space-x-1';
+                window.filterPlants();
+            } else if (tabName === 'reserve') {
+                if (tabReserve) tabReserve.classList.remove('hidden');
+                if (btnReserve) btnReserve.className = 'flex-1 py-2 border-b-2 border-amber-600 text-amber-700 bg-white transition flex items-center justify-center space-x-1';
+                window.renderReserveList();
+            } else if (tabName === 'form') {
+                if (tabForm) tabForm.classList.remove('hidden');
+                if (btnForm) btnForm.className = 'flex-1 py-2 border-b-2 border-botanic-700 text-botanic-700 bg-white transition flex items-center justify-center space-x-1';
+            }
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.initPanelDrag = function(e, panelKey) {
+            window.dragType = 'panel';
+            window.activePanelKey = panelKey;
+            window.dragOffsetX = e.clientX - window.panelLayouts[panelKey].x;
+            window.dragOffsetY = e.clientY - window.panelLayouts[panelKey].y;
+        };
+
+        window.initPanelResize = function(e, panelKey) {
+            window.dragType = 'panel-resize';
+            window.activePanelKey = panelKey;
+            window.dragOffsetX = e.clientX;
+            window.dragOffsetY = e.clientY;
+        };
+
+        window.initZoneDrag = function(e, zoneId) {
+            if (window.isReadMode) return;
+            e.stopPropagation();
+            window.pushStateToUndo();
+            window.dragType = 'zone';
+            window.dragTarget = zoneId;
+            const zone = window.zones.find(z => z.id === zoneId);
+            if (zone) {
+                window.dragOffsetX = (e.clientX - window.panX) / window.scale - zone.x;
+                window.dragOffsetY = (e.clientY - window.panY) / window.scale - zone.y;
+            }
+        };
+
+        window.initZoneResize = function(e, zoneId) {
+            if (window.isReadMode) return;
+            e.stopPropagation();
+            window.pushStateToUndo();
+            window.dragType = 'zone-resize';
+            window.dragTarget = zoneId;
+            window.dragOffsetX = e.clientX;
+            window.dragOffsetY = e.clientY;
+        };
+
+        window.initPlantDrag = function(e, zoneId, instanceId) {
+            if (window.isReadMode) return;
+            e.stopPropagation();
+            window.pushStateToUndo();
+            window.dragType = 'plant';
+            window.dragTarget = { zoneId, instanceId };
+            window.dragStartX = e.clientX;
+            window.dragStartY = e.clientY;
+
+            const zone = window.zones.find(z => z.id === zoneId);
+            const plant = zone?.plants.find(p => p.instanceId === instanceId);
+            if (zone && plant) {
+                const canvasMouseX = (e.clientX - window.panX) / window.scale;
+                const canvasMouseY = (e.clientY - window.panY) / window.scale;
+                
+                const absPlantX = zone.x + plant.x;
+                const absPlantY = zone.y + plant.y;
+
+                window.dragOffsetX = canvasMouseX - absPlantX;
+                window.dragOffsetY = canvasMouseY - absPlantY;
+            }
+        };
+
+        window.setupGlobalMouseEvents = function() {
+            window.addEventListener('mousemove', (e) => {
+                if (window.isPanning) {
+                    window.panX = e.clientX - window.startPanX;
+                    window.panY = e.clientY - window.startPanY;
+                    window.updateCanvasTransform();
+                    return;
+                }
+
+                // Handle Catalog / Reserve List Item Dragging
+                if (window.dragType === 'catalog-item' && activeCatalogDragPlant) {
+                    const distMoved = Math.hypot(e.clientX - window.dragStartX, e.clientY - window.dragStartY);
+                    if (distMoved > 5) {
+                        if (!catalogDragGhost) {
+                            catalogDragGhost = document.createElement('div');
+                            catalogDragGhost.className = 'fixed pointer-events-none z-50 bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-xl shadow-2xl flex items-center space-x-2 border border-white/20 opacity-90 backdrop-blur-sm';
+                            const colStyle = window.getPlantColorStyle(activeCatalogDragPlant.color);
+                            catalogDragGhost.innerHTML = `
+                                <div class="w-3 h-3 rounded-full border border-white" style="background-color: ${colStyle.bg}"></div>
+                                <span>${activeCatalogDragPlant.name}</span>
+                            `;
+                            document.body.appendChild(catalogDragGhost);
+                        }
+                        catalogDragGhost.style.left = `${e.clientX + 12}px`;
+                        catalogDragGhost.style.top = `${e.clientY + 12}px`;
+                    }
+                    return;
+                }
+
+                if (window.dragType === 'panel') {
+                    const panel = document.getElementById(window.activePanelKey === 'bloom' ? 'floating-bloom-panel' : 'floating-filter-panel');
+                    if (panel) {
+                        const newX = Math.max(10, e.clientX - window.dragOffsetX);
+                        const newY = Math.max(10, e.clientY - window.dragOffsetY);
+                        panel.style.left = `${newX}px`;
+                        panel.style.top = `${newY}px`;
+                        if (!window.panelLayouts[window.activePanelKey]) window.panelLayouts[window.activePanelKey] = {};
+                        window.panelLayouts[window.activePanelKey].x = newX;
+                        window.panelLayouts[window.activePanelKey].y = newY;
+                    }
+                } else if (window.dragType === 'panel-resize') {
+                    const panel = document.getElementById(window.activePanelKey === 'bloom' ? 'floating-bloom-panel' : 'floating-filter-panel');
+                    if (panel) {
+                        const deltaX = e.clientX - window.dragOffsetX;
+                        const deltaY = e.clientY - window.dragOffsetY;
+                        window.dragOffsetX = e.clientX;
+                        window.dragOffsetY = e.clientY;
+                        
+                        const curW = parseInt(panel.style.width) || 300;
+                        const curH = parseInt(panel.style.height) || 220;
+                        const newW = Math.max(260, curW + deltaX);
+                        const newH = Math.max(180, curH + deltaY);
+                        
+                        panel.style.width = `${newW}px`;
+                        panel.style.height = `${newH}px`;
+                        if (!window.panelLayouts[window.activePanelKey]) window.panelLayouts[window.activePanelKey] = {};
+                        window.panelLayouts[window.activePanelKey].w = newW;
+                        window.panelLayouts[window.activePanelKey].h = newH;
+                    }
+                } else if (window.dragType === 'zone') {
+                    const zone = window.zones.find(z => z.id === window.dragTarget);
+                    if (zone) {
+                        zone.x = (e.clientX - window.panX) / window.scale - window.dragOffsetX;
+                        zone.y = (e.clientY - window.panY) / window.scale - window.dragOffsetY;
+                        window.renderDesignerCanvas();
+                    }
+                } else if (window.dragType === 'zone-resize') {
+                    const zone = window.zones.find(z => z.id === window.dragTarget);
+                    if (zone) {
+                        const deltaX = (e.clientX - window.dragOffsetX) / window.scale;
+                        const deltaY = (e.clientY - window.dragOffsetY) / window.scale;
+                        window.dragOffsetX = e.clientX;
+                        window.dragOffsetY = e.clientY;
+                        zone.w = Math.max(200, zone.w + deltaX);
+                        zone.h = Math.max(150, zone.h + deltaY);
+                        window.renderDesignerCanvas();
+                    }
+                } else if (window.dragType === 'plant') {
+                    const { zoneId, instanceId } = window.dragTarget;
+                    const zone = window.zones.find(z => z.id === zoneId);
+                    const plant = zone?.plants.find(p => p.instanceId === instanceId);
+                    if (zone && plant) {
+                        const canvasMouseX = (e.clientX - window.panX) / window.scale;
+                        const canvasMouseY = (e.clientY - window.panY) / window.scale;
+
+                        // Calculate proposed absolute coordinates
+                        const proposedAbsX = canvasMouseX - window.dragOffsetX;
+                        const proposedAbsY = canvasMouseY - window.dragOffsetY;
+
+                        // Position relative to current zone
+                        plant.x = proposedAbsX - zone.x;
+                        plant.y = proposedAbsY - zone.y;
+
+                        window.renderDesignerCanvas();
+                    }
+                }
+            });
+
+            window.addEventListener('mouseup', (e) => {
+                // Clean up Catalog Drag Ghost
+                if (window.dragType === 'catalog-item') {
+                    if (catalogDragGhost) {
+                        catalogDragGhost.remove();
+                        catalogDragGhost = null;
+                    }
+
+                    const distMoved = Math.hypot(e.clientX - window.dragStartX, e.clientY - window.dragStartY);
+                    if (distMoved > 5 && activeCatalogDragPlant) {
+                        window.pushStateToUndo();
+                        // Calculate position on canvas
+                        const canvasMouseX = (e.clientX - window.panX) / window.scale;
+                        const canvasMouseY = (e.clientY - window.panY) / window.scale;
+
+                        // Check if dropped onto a garden zone
+                        const targetZone = window.zones.find(z => 
+                            canvasMouseX >= z.x && 
+                            canvasMouseX <= z.x + z.w && 
+                            canvasMouseY >= z.y && 
+                            canvasMouseY <= z.y + z.h
+                        );
+
+                        if (targetZone) {
+                            // Update plant ownership and zones
+                            activeCatalogDragPlant.owned = 'ja';
+                            let currentZones = (activeCatalogDragPlant.zones || '').split(',').map(s => s.trim()).filter(Boolean);
+                            currentZones = currentZones.filter(zName => zName.toLowerCase() !== 'reservelijst');
+                            if (!currentZones.some(zName => zName.toLowerCase() === targetZone.name.toLowerCase())) {
+                                currentZones.push(targetZone.name);
+                            }
+                            activeCatalogDragPlant.zones = currentZones.join(', ');
+
+                            // Ensure an instance exists in the target zone
+                            const existingInstance = targetZone.plants.find(p => String(p.plantId) === String(activeCatalogDragPlant.id));
+                            if (!existingInstance) {
+                                targetZone.plants.push({
+                                    instanceId: 'inst-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+                                    plantId: activeCatalogDragPlant.id,
+                                    plantName: activeCatalogDragPlant.name,
+                                    x: Math.max(25, Math.min(canvasMouseX - targetZone.x, targetZone.w - 25)),
+                                    y: Math.max(25, Math.min(canvasMouseY - targetZone.y, targetZone.h - 25)),
+                                    size: 26
+                                });
+                            }
+
+                            window.syncPlantsWithZones();
+                            window.saveState();
+                            window.populateFilterDropdowns();
+                            window.filterPlants();
+                            window.renderReserveList();
+                            window.renderDesignerCanvas();
+                        }
+                    }
+
+                    activeCatalogDragPlant = null;
+                    window.dragType = null;
+                    return;
+                }
+
+                if (window.dragType === 'plant') {
+                    const distMoved = Math.hypot(e.clientX - window.dragStartX, e.clientY - window.dragStartY);
+                    const { zoneId, instanceId } = window.dragTarget;
+                    const sourceZone = window.zones.find(z => z.id === zoneId);
+                    const plantInst = sourceZone?.plants.find(p => p.instanceId === instanceId);
+                    const plantDef = window.allPlants.find(p => String(p.id) === String(plantInst?.plantId));
+
+                    // Als de muis nauwelijks verplaatst is (< 4px), was het een gewone klik (en geen sleepactie)
+                    if (distMoved < 4 && plantDef) {
+                        // Verwijder de zojuist klaargezette onnodige undo-stap uit de stack zodat ongedaan maken niet leeg triggert
+                        window.undoStack.pop();
+                        window.updateUndoRedoUI();
+                        window.openPlantDetail(plantDef.id, zoneId, instanceId);
+                    }
+                }
+
+                if (window.isPanning || window.dragType) {
+                    window.isPanning = false;
+                    window.dragType = null;
+                    window.dragTarget = null;
+                    window.saveState();
+                    window.renderDesignerCanvas();
+                }
+            });
+        };
+
+        // --- Data Sync & Zones Generator ---
+        window.syncPlantsWithZones = function() {
+            let requiredZoneNames = new Set();
+            
+            window.allPlants.forEach(plant => {
+                let rawZones = plant.zones || '';
+                let zoneNamesList = rawZones.split(',').map(z => z.trim()).filter(z => z && z.toLowerCase() !== 'reservelijst');
+                zoneNamesList.forEach(zName => requiredZoneNames.add(zName));
+            });
+
+            requiredZoneNames.forEach(zName => {
+                let existingZone = window.zones.find(z => z.name.toLowerCase() === zName.toLowerCase());
+                if (!existingZone) {
+                    let index = window.zones.length;
+                    let colIndex = index % 3;
+                    let rowIndex = Math.floor(index / 3);
+                    let newZone = {
+                        id: 'zone-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+                        name: zName,
+                        x: 80 + colIndex * 460,
+                        y: 80 + rowIndex * 400,
+                        w: 420,
+                        h: 360,
+                        color: 'bg-emerald-50/95',
+                        visible: true,
+                        plants: []
+                    };
+                    window.zones.push(newZone);
+                } else {
+                    existingZone.name = zName;
+                    existingZone.visible = true;
+                }
+            });
+
+            const activePlantMap = new Map(window.allPlants.map(p => [String(p.id), p]));
+
+            window.zones.forEach(zone => {
+                const zoneNameLower = zone.name.toLowerCase();
+                
+                zone.plants = (zone.plants || []).filter(pInst => {
+                    const plantObj = activePlantMap.get(String(pInst.plantId));
+                    if (!plantObj) return false;
+                    const pZones = (plantObj.zones || '').split(',').map(z => z.trim().toLowerCase());
+                    return pZones.includes(zoneNameLower);
+                });
+
+                window.allPlants.forEach(plant => {
+                    const pZones = (plant.zones || '').split(',').map(z => z.trim().toLowerCase());
+                    if (pZones.includes(zoneNameLower)) {
+                        const hasInstance = zone.plants.some(p => String(p.plantId) === String(plant.id));
+                        if (!hasInstance) {
+                            const pIdx = zone.plants.length;
+                            const xPos = 45 + (pIdx % 4) * 85;
+                            const yPos = 55 + Math.floor(pIdx / 4) * 75;
+                            zone.plants.push({
+                                instanceId: 'inst-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+                                plantId: plant.id,
+                                plantName: plant.name,
+                                x: Math.min(xPos, zone.w - 40),
+                                y: Math.min(yPos, zone.h - 40),
+                                size: 26
+                            });
+                        }
+                    }
+                });
+            });
+
+            // Automatische verwijdering van lege vakken
+            window.zones = window.zones.filter(zone => zone.plants && zone.plants.length > 0);
+
+            if (window.selectedZoneId && !window.zones.some(z => z.id === window.selectedZoneId)) {
+                window.selectedZoneId = window.zones.length > 0 ? window.zones[0].id : null;
+            }
+        };
+
+        // --- Filter & UI Renders ---
+        window.populateFilterDropdowns = function() {
+            const typeSelect = document.getElementById('filter-type');
+            const colorSelect = document.getElementById('filter-color');
+            const lightSelect = document.getElementById('filter-light');
+            const nurserySelect = document.getElementById('filter-nursery');
+
+            if (!typeSelect || !colorSelect) return;
+
+            const types = [...new Set(window.allPlants.map(p => p.type).filter(Boolean))];
+            const colors = [...new Set(window.allPlants.map(p => p.color).filter(Boolean))];
+            const lights = [...new Set(window.allPlants.map(p => p.light).filter(Boolean))];
+            const nurseries = [...new Set(window.allPlants.map(p => p.nursery).filter(Boolean))];
+
+            typeSelect.innerHTML = '<option value="">Alle typen</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
+            colorSelect.innerHTML = '<option value="">Alle kleuren</option>' + colors.map(c => `<option value="${c}" class="capitalize">${c}</option>`).join('');
+            
+            if (lightSelect) {
+                lightSelect.innerHTML = '<option value="">Alle standplaatsen</option>' + lights.map(l => `<option value="${l}">${l}</option>`).join('');
+            }
+
+            if (nurserySelect) {
+                nurserySelect.innerHTML = '<option value="">Alle kwekers / shops</option>' + nurseries.map(n => `<option value="${n}">${n}</option>`).join('');
+            }
+        };
+
+        window.resetFilters = function() {
+            const searchInput = document.getElementById('plant-search');
+            const typeSelect = document.getElementById('filter-type');
+            const colorSelect = document.getElementById('filter-color');
+            const lightSelect = document.getElementById('filter-light');
+            const ownedSelect = document.getElementById('filter-owned');
+            const nurserySelect = document.getElementById('filter-nursery');
+            const heightInput = document.getElementById('filter-height');
+            const bloomInput = document.getElementById('filter-bloom');
+
+            if (searchInput) searchInput.value = '';
+            if (typeSelect) typeSelect.value = '';
+            if (colorSelect) colorSelect.value = '';
+            if (lightSelect) lightSelect.value = '';
+            if (ownedSelect) ownedSelect.value = '';
+            if (nurserySelect) nurserySelect.value = '';
+            if (heightInput) heightInput.value = '';
+            if (bloomInput) bloomInput.value = '';
+
+            window.filterPlants();
+        };
+
+        window.initCatalogDrag = function(e, plantId) {
+            if (window.isReadMode) return; // Vergrendeld in leesmodus
+            e.stopPropagation();
+            const plant = window.allPlants.find(p => String(p.id) === String(plantId));
+            if (!plant) return;
+
+            window.dragType = 'catalog-item';
+            activeCatalogDragPlant = plant;
+            window.dragStartX = e.clientX;
+            window.dragStartY = e.clientY;
+        };
+
+        window.filterPlants = function() {
+            const container = document.getElementById('plant-catalog-list');
+            const countEl = document.getElementById('sheet-status');
+            const zoneFilterBanner = document.getElementById('active-zone-filter-banner');
+            const zoneFilterName = document.getElementById('active-zone-filter-name');
+            if (!container) return;
+
+            const query = (document.getElementById('plant-search')?.value || '').toLowerCase();
+            const typeVal = document.getElementById('filter-type')?.value || '';
+            const colorVal = document.getElementById('filter-color')?.value || '';
+            const lightVal = document.getElementById('filter-light')?.value || '';
+            const ownedVal = document.getElementById('filter-owned')?.value || '';
+            const nurseryVal = document.getElementById('filter-nursery')?.value || '';
+            const heightVal = (document.getElementById('filter-height')?.value || '').toLowerCase();
+            const bloomVal = (document.getElementById('filter-bloom')?.value || '').toLowerCase();
+
+            // Check if a specific zone is currently selected
+            const selectedZone = window.zones.find(z => z.id === window.selectedZoneId);
+            if (selectedZone && zoneFilterBanner && zoneFilterName) {
+                zoneFilterBanner.classList.remove('hidden');
+                zoneFilterName.innerText = `Vak: ${selectedZone.name}`;
+            } else if (zoneFilterBanner) {
+                zoneFilterBanner.classList.add('hidden');
+            }
+
+            const filtered = window.allPlants.filter(p => {
+                const isReserve = (p.zones || '').toLowerCase().includes('reservelijst');
+                
+                if (isReserve && ownedVal !== 'nee') return false;
+
+                // Filter by selected zone on canvas if applicable
+                if (selectedZone) {
+                    const plantZones = (p.zones || '').split(',').map(z => z.trim().toLowerCase());
+                    const matchesZone = plantZones.includes(selectedZone.name.toLowerCase());
+                    if (!matchesZone) return false;
+                }
+
+                const matchesQuery = !query || p.name.toLowerCase().includes(query) || p.type.toLowerCase().includes(query) || (p.nursery && p.nursery.toLowerCase().includes(query)) || (p.notes && p.notes.toLowerCase().includes(query));
+                const matchesType = !typeVal || p.type === typeVal;
+                const matchesColor = !colorVal || p.color.toLowerCase() === colorVal.toLowerCase();
+                const matchesLight = !lightVal || (p.light && p.light.toLowerCase().includes(lightVal.toLowerCase()));
+                const matchesOwned = !ownedVal || (p.owned || 'ja').toLowerCase() === ownedVal.toLowerCase() || (ownedVal === 'nee' && isReserve);
+                const matchesNursery = !nurseryVal || (p.nursery && p.nursery.toLowerCase() === nurseryVal.toLowerCase());
+                const matchesHeight = !heightVal || (p.height && p.height.toLowerCase().includes(heightVal));
+                const matchesBloom = !bloomVal || (p.bloom && p.bloom.toLowerCase().includes(bloomVal));
+
+                return matchesQuery && matchesType && matchesColor && matchesLight && matchesOwned && matchesNursery && matchesHeight && matchesBloom;
+            });
+
+            if (countEl) countEl.innerText = `Resultaten: ${filtered.length} planten`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Geen planten gevonden voor deze filters.</p>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(plant => {
+                const colStyle = window.getPlantColorStyle(plant.color);
+                const nurseryTag = plant.nursery ? ` • Kweker: ${plant.nursery}` : '';
+
+                const actionButtonsHtml = window.isReadMode ? '' : `
+                    <div class="flex items-center space-x-1 flex-shrink-0" onmousedown="event.stopPropagation()">
+                        <button onclick="window.editPlantInForm('${plant.id}')" class="p-1 hover:bg-slate-100 rounded text-slate-600 hover:text-botanic-700 transition" title="Bewerken">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="window.deletePlantDefinition('${plant.id}')" class="p-1 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition" title="Verwijderen">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `;
+
+                return `
+                    <div class="border border-slate-200 bg-white hover:border-botanic-600 rounded-xl p-2.5 transition flex items-center justify-between group ${window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}"
+                         ${window.isReadMode ? `onclick="window.openPlantDetail('${plant.id}')"` : `onmousedown="window.initCatalogDrag(event, '${plant.id}')"`}>
+                        <div class="flex items-center space-x-2.5 truncate" onclick="if(${window.isReadMode} || Math.hypot(event.clientX - window.dragStartX, event.clientY - window.dragStartY) < 5) window.openPlantDetail('${plant.id}')">
+                            <div class="w-4 h-4 rounded-full flex-shrink-0 border shadow-sm" style="background-color: ${colStyle.bg}; border-color: ${colStyle.border};"></div>
+                            <div class="truncate">
+                                <p class="font-bold text-slate-800 text-xs truncate">${plant.name}</p>
+                                <p class="text-[10px] text-slate-500 truncate">${plant.type} • ${plant.zones || 'Geen vak'}${nurseryTag}</p>
+                            </div>
+                        </div>
+                        ${actionButtonsHtml}
+                    </div>
+                `;
+            }).join('');
+
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.renderReserveList = function() {
+            const container = document.getElementById('reserve-catalog-list');
+            const countBadge = document.getElementById('reserve-count-badge');
+            const query = (document.getElementById('reserve-search')?.value || '').toLowerCase();
+
+            if (!container) return;
+
+            const reservePlants = window.allPlants.filter(p => {
+                const isReserve = (p.zones || '').toLowerCase().includes('reservelijst');
+                const matchesQuery = p.name.toLowerCase().includes(query) || p.type.toLowerCase().includes(query) || (p.nursery && p.nursery.toLowerCase().includes(query));
+                return isReserve && matchesQuery;
+            });
+
+            if (countBadge) countBadge.innerText = reservePlants.length;
+
+            if (reservePlants.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Geen planten op de reservelijst.</p>`;
+                return;
+            }
+
+            container.innerHTML = reservePlants.map(plant => {
+                const colStyle = window.getPlantColorStyle(plant.color);
+                const nurseryTag = plant.nursery ? ` • Kweker: ${plant.nursery}` : '';
+
+                const actionButtonsHtml = window.isReadMode ? '' : `
+                    <div class="flex items-center space-x-1 flex-shrink-0" onmousedown="event.stopPropagation()">
+                        <button onclick="window.editPlantInForm('${plant.id}')" class="p-1 hover:bg-amber-100 rounded text-amber-800 transition" title="Bewerken / Toewijzen aan vak">
+                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="window.deletePlantDefinition('${plant.id}')" class="p-1 hover:bg-red-100 rounded text-red-500 hover:text-red-700 transition" title="Verwijderen">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `;
+
+                return `
+                    <div class="border border-amber-200 bg-amber-50/40 hover:border-amber-400 hover:bg-amber-50 rounded-xl p-2.5 transition flex items-center justify-between group ${window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}"
+                         ${window.isReadMode ? `onclick="window.openPlantDetail('${plant.id}')"` : `onmousedown="window.initCatalogDrag(event, '${plant.id}')"`}>
+                        <div class="flex items-center space-x-2.5 truncate" onclick="if(${window.isReadMode} || Math.hypot(event.clientX - window.dragStartX, event.clientY - window.dragStartY) < 5) window.openPlantDetail('${plant.id}')">
+                            <div class="w-4 h-4 rounded-full flex-shrink-0 border shadow-sm" style="background-color: ${colStyle.bg}; border-color: ${colStyle.border};"></div>
+                            <div class="truncate">
+                                <p class="font-bold text-slate-800 text-xs truncate">${plant.name}</p>
+                                <p class="text-[10px] text-amber-800/80 truncate">${plant.type} ${nurseryTag}</p>
+                            </div>
+                        </div>
+                        ${actionButtonsHtml}
+                    </div>
+                `;
+            }).join('');
+
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.renderDesignerCanvas = function() {
+            const container = document.getElementById('canvas-content-container');
+            if (!container) return;
+            let html = '';
+
+            const monthNames = ['', 'januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+            const activeMonthName = monthNames[window.currentBloomMonthIndex] || '';
+
+            window.zones.forEach(zone => {
+                if (!zone.visible) return;
+                const isSelected = window.selectedZoneId === zone.id;
+                const borderClass = isSelected ? 'border-2 border-botanic-600 shadow-2xl ring-2 ring-botanic-200' : 'border border-slate-300 shadow-lg';
+                const zoneHeaderCursor = window.isReadMode ? 'cursor-pointer' : 'cursor-move hover:bg-slate-100';
+
+                html += `
+                    <div class="absolute rounded-2xl ${zone.color} ${borderClass} transition-shadow flex flex-col overflow-visible select-none"
+                         style="left: ${zone.x}px; top: ${zone.y}px; width: ${zone.w}px; height: ${zone.h}px;">
+                         
+                        <div class="bg-white/95 backdrop-blur-sm px-3.5 py-2 border-b border-slate-200 flex items-center justify-between ${zoneHeaderCursor} transition z-20 rounded-t-2xl"
+                             ${window.isReadMode ? '' : `onmousedown="window.initZoneDrag(event, '${zone.id}')"`}
+                             onclick="window.selectZone('${zone.id}')">
+                            <div class="flex items-center space-x-2 truncate pointer-events-none">
+                                <span class="font-bold text-slate-800 text-xs truncate">${zone.name}</span>
+                                <span class="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">${zone.plants.length}</span>
+                            </div>
+                            <button onclick="event.stopPropagation(); window.toggleZoneVisibility('${zone.id}', event)" class="p-1 hover:bg-slate-200 rounded text-botanic-700 transition" title="Verberg vak">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                        <div class="relative flex-grow overflow-visible" onclick="window.selectZone('${zone.id}')">
+                `;
+
+                zone.plants.forEach(plantInst => {
+                    const plantData = window.allPlants.find(p => String(p.id) === String(plantInst.plantId)) || { name: plantInst.plantName || 'Onbekend', color: 'groen', owned: 'ja' };
+                    const colStyle = window.getPlantColorStyle(plantData.color);
+                    const imgUrl = window.getPlantImageUrl(plantData);
+                    const size = plantInst.size || 26;
+
+                    // Check ownership status (Not owned / Reservelijst)
+                    const isNotOwned = (plantData.owned || 'ja').toLowerCase() === 'nee';
+                    const borderStyle = isNotOwned ? 'border-dashed border-2 opacity-80' : 'border-2';
+                    const ownedBadge = isNotOwned ? `<span class="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full w-3.5 h-3.5 text-[8px] flex items-center justify-center shadow-sm pointer-events-none">🛒</span>` : '';
+
+                    // Check if plant blooms in active month
+                    const bloomStr = (plantData.bloom || '').toLowerCase();
+                    const isBlooming = activeMonthName && bloomStr.includes(activeMonthName);
+                    const bloomGlowClass = isBlooming ? 'ring-4 ring-pink-400 animate-pulse scale-110' : '';
+
+                    const plantCursorClass = window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing';
+                    const plantMouseDownAttr = window.isReadMode ? `onclick="window.openPlantDetail('${plantData.id}', '${zone.id}', '${plantInst.instanceId}')"` : `onmousedown="window.initPlantDrag(event, '${zone.id}', '${plantInst.instanceId}')"`;
+
+                    html += `
+                        <div class="plant-dot absolute group ${plantCursorClass} flex items-center justify-center transition-transform hover:scale-125 z-10 hover:z-50 pointer-events-auto"
+                             style="left: ${plantInst.x - size/2}px; top: ${plantInst.y - size/2}px; width: ${size}px; height: ${size}px;"
+                             ${plantMouseDownAttr}>
+                             
+                            <div class="w-full h-full rounded-full shadow-md flex items-center justify-center text-[10px] font-bold transition pointer-events-none ${borderStyle} ${bloomGlowClass}"
+                                 style="background-color: ${colStyle.bg}; color: ${colStyle.text}; border-color: ${isNotOwned ? '#f59e0b' : colStyle.border};">
+                                ${isBlooming ? '🌸' : '•'}
+                            </div>
+                            ${ownedBadge}
+
+                            <!-- HOVER PREVIEW TOOLTIP -->
+                            <div class="hidden group-hover:flex absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 bg-slate-900/95 text-white p-2 rounded-xl shadow-2xl flex-col items-center pointer-events-none z-50 transition border border-slate-700/50">
+                                <div class="w-full h-24 rounded-lg overflow-hidden bg-slate-800 mb-1.5 relative border border-slate-700">
+                                    <img src="${imgUrl}" alt="${plantData.name}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=400&q=80';">
+                                    ${isNotOwned ? '<span class="absolute top-1 right-1 bg-amber-500 text-white font-bold text-[9px] px-1.5 py-0.5 rounded-md shadow">Nog kopen</span>' : ''}
+                                </div>
+                                <span class="font-bold text-xs text-center line-clamp-1">${plantData.name}</span>
+                                <span class="text-[10px] text-slate-300 text-center">${plantData.bloom || plantData.type || 'Plant'} • ${zone.name}</span>
+                                <div class="w-2 h-2 bg-slate-900/95 rotate-45 absolute -bottom-1 left-1/2 -translate-x-1/2 border-r border-b border-slate-700/50"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                if (!window.isReadMode) {
+                    html += `<div class="zone-resize-handle" onmousedown="window.initZoneResize(event, '${zone.id}')"></div>`;
+                }
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            window.updateBloomCalendarUI();
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.openPlantDetail = function(plantId, zoneId = null, instanceId = null) {
+            const plant = window.allPlants.find(p => String(p.id) === String(plantId)) || window.allPlants[0];
+            if (!plant) return;
+
+            if (zoneId) {
+                window.selectedZoneId = zoneId;
+                window.renderDesignerCanvas();
+            }
+
+            document.getElementById('modal-plant-name').innerText = plant.name;
+            const contentEl = document.getElementById('modal-plant-content');
+            const sizeContainerEl = document.getElementById('modal-size-container');
+
+            let imgUrl = window.getPlantImageUrl(plant);
+
+            // Fetch image live automatically if missing
+            if (!plant.image) {
+                window.extractImageFromUrl(plant).then(extractedImg => {
+                    if (extractedImg) {
+                        plant.image = extractedImg;
+                        const modalImg = document.getElementById('modal-plant-img-element');
+                        if (modalImg) modalImg.src = extractedImg;
+                        window.saveState();
+                    }
+                });
+            }
+
+            const nurseryHtml = plant.nursery ? `<p class="text-xs text-slate-700"><strong>Kweker / Waar te koop:</strong> ${plant.nursery}</p>` : '';
+            const linkHtml = plant.link ? `<p class="text-xs text-slate-700"><strong>Link:</strong> <a href="${plant.link}" target="_blank" rel="noopener noreferrer" class="text-emerald-700 underline font-semibold hover:text-emerald-800 break-all">${plant.link}</a></p>` : '';
+            const notesHtml = plant.notes ? `<p class="text-xs text-slate-700"><strong>Opmerkingen:</strong> ${plant.notes}</p>` : '';
+
+            const editButtonHtml = window.isReadMode ? '' : `
+                <button onclick="window.editPlantInForm('${plant.id}'); window.closePlantDetail();" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center justify-center space-x-1">
+                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                    <span>Bewerken in Invoerscherm</span>
+                </button>
+            `;
+
+            contentEl.innerHTML = `
+                <div class="space-y-3">
+                    <!-- Plant Afbeelding Card -->
+                    <div class="w-full h-44 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 relative shadow-inner">
+                        <img id="modal-plant-img-element" src="${imgUrl}" alt="${plant.name}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=400&q=80';">
+                    </div>
+
+                    <div class="bg-botanic-50 p-3 rounded-xl border border-botanic-100 space-y-1.5">
+                        <p class="text-[11px] text-botanic-800 font-semibold">Plant Specificaties</p>
+                        <p class="text-xs text-slate-700"><strong>Heb ik?:</strong> <span class="capitalize font-semibold ${plant.owned === 'nee' ? 'text-amber-700' : 'text-emerald-700'}">${plant.owned || 'ja'}</span> (Aantal: ${plant.quantity || 1})</p>
+                        <p class="text-xs text-slate-700"><strong>Type:</strong> ${plant.type}</p>
+                        <p class="text-xs text-slate-700"><strong>Bloemkleur:</strong> <span class="capitalize">${plant.color}</span></p>
+                        <p class="text-xs text-slate-700"><strong>Standplaats:</strong> ${plant.light}</p>
+                        <p class="text-xs text-slate-700"><strong>Hoogte:</strong> ${plant.height}</p>
+                        <p class="text-xs text-slate-700"><strong>Bloeitijd:</strong> ${plant.bloom}</p>
+                        <p class="text-xs text-slate-700"><strong>Toegewezen Vakken:</strong> ${plant.zones}</p>
+                        ${nurseryHtml}
+                        ${linkHtml}
+                        ${notesHtml}
+                    </div>
+                    ${editButtonHtml}
+                </div>
+            `;
+
+            if (!window.isReadMode && zoneId && instanceId) {
+                window.activeModalPlantInstance = { zoneId, instanceId };
+                const zone = window.zones.find(z => z.id === zoneId);
+                const inst = zone?.plants.find(p => p.instanceId === instanceId);
+                const currentSize = inst ? (inst.size || 26) : 26;
+
+                sizeContainerEl.innerHTML = `
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-600 font-medium">Grootte op kaart:</span>
+                        <span id="modal-size-val" class="font-semibold text-slate-700">${currentSize}px</span>
+                    </div>
+                    <input type="range" min="14" max="70" step="2" value="${currentSize}" 
+                           oninput="window.updateModalPlantSize('${zoneId}', '${instanceId}', this.value)"
+                           class="w-full accent-botanic-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg">
+                `;
+            } else {
+                window.activeModalPlantInstance = null;
+                sizeContainerEl.innerHTML = `<span class="text-slate-400 italic text-center">${window.isReadMode ? 'Leesmodus actief (alleen-lezen)' : 'Selecteer plant op kaart om grootte aan te passen'}</span>`;
+            }
+
+            const modal = document.getElementById('plant-detail-modal');
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.openNewPlantModal = function() {
+            window.clearPlantForm();
+            window.switchPanelTab('form');
+        };
+
+        window.clearPlantForm = function() {
+            document.getElementById('form-plant-id').value = '';
+            document.getElementById('form-plant-name').value = '';
+            document.getElementById('form-plant-owned').value = 'ja';
+            document.getElementById('form-plant-quantity').value = '1';
+            document.getElementById('form-plant-type').value = 'Vaste plant';
+            document.getElementById('form-plant-color').value = 'groen';
+            document.getElementById('form-plant-light').value = 'Halfschaduw / Schaduw';
+            document.getElementById('form-plant-height').value = '';
+            document.getElementById('form-plant-bloom').value = '';
+            document.getElementById('form-plant-zones').value = '';
+            document.getElementById('form-plant-nursery').value = '';
+            document.getElementById('form-plant-link').value = '';
+            document.getElementById('form-plant-notes').value = '';
+            document.getElementById('form-mode-title').innerText = 'Nieuwe Plant Invoeren';
+        };
+
+        window.editPlantInForm = function(plantId) {
+            const plant = window.allPlants.find(p => String(p.id) === String(plantId));
+            if (!plant) return;
+
+            document.getElementById('form-plant-id').value = plant.id;
+            document.getElementById('form-plant-name').value = plant.name;
+            document.getElementById('form-plant-owned').value = (plant.owned || 'ja').toLowerCase();
+            document.getElementById('form-plant-quantity').value = plant.quantity || '1';
+            document.getElementById('form-plant-type').value = plant.type || 'Vaste plant';
+            document.getElementById('form-plant-color').value = (plant.color || 'groen').toLowerCase();
+            document.getElementById('form-plant-light').value = plant.light || 'Halfschaduw / Schaduw';
+            document.getElementById('form-plant-height').value = plant.height || '';
+            document.getElementById('form-plant-bloom').value = plant.bloom || '';
+            document.getElementById('form-plant-zones').value = plant.zones || '';
+            document.getElementById('form-plant-nursery').value = plant.nursery || '';
+            document.getElementById('form-plant-link').value = plant.link || '';
+            document.getElementById('form-plant-custom-image').value = plant.image && !plant.image.includes('unsplash.com') ? plant.image : '';
+            document.getElementById('form-plant-notes').value = plant.notes || '';
+            document.getElementById('form-mode-title').innerText = 'Plant Bewerken';
+
+            window.switchPanelTab('form');
+        };
+
+        window.savePlantFromForm = function() {
+            window.pushStateToUndo();
+
+            const id = document.getElementById('form-plant-id').value;
+            const name = document.getElementById('form-plant-name').value.trim();
+            if (!name) {
+                // Gebruik een subtiele melding in plaats van alert()
+                const nameInput = document.getElementById('form-plant-name');
+                if (nameInput) {
+                    nameInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+                    nameInput.focus();
+                }
+                return;
+            } else {
+                const nameInput = document.getElementById('form-plant-name');
+                if (nameInput) {
+                    nameInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
+                }
+            }
+
+            const owned = document.getElementById('form-plant-owned').value;
+            const quantity = document.getElementById('form-plant-quantity').value.trim() || '1';
+            const type = document.getElementById('form-plant-type').value;
+            const color = document.getElementById('form-plant-color').value;
+            const light = document.getElementById('form-plant-light').value;
+            const height = document.getElementById('form-plant-height').value.trim();
+            const bloom = document.getElementById('form-plant-bloom').value.trim();
+            let zones = document.getElementById('form-plant-zones').value.trim();
+            const nursery = document.getElementById('form-plant-nursery').value.trim();
+            const link = document.getElementById('form-plant-link').value.trim();
+            const customImage = document.getElementById('form-plant-custom-image').value.trim();
+            const notes = document.getElementById('form-plant-notes').value.trim();
+
+            if (owned === 'nee' && (!zones || zones.trim() === '')) {
+                zones = 'Reservelijst';
+            }
+
+            // Bestaande plant opzoeken om eventuele reeds opgeslagen afbeelding te behouden
+            const existingPlant = window.allPlants.find(p => String(p.id) === String(id));
+            let finalImage = customImage || (existingPlant ? existingPlant.image : '');
+
+            const plantData = { id, name, owned, quantity, type, color, light, height, bloom, zones, nursery, link, notes, image: finalImage };
+
+            if (id) {
+                const index = window.allPlants.findIndex(p => String(p.id) === String(id));
+                if (index !== -1) window.allPlants[index] = plantData;
+            } else {
+                plantData.id = 'plant-' + Date.now();
+                window.allPlants.push(plantData);
+            }
+
+            if (!finalImage) {
+                window.extractImageFromUrl(plantData).then(img => {
+                    if (img) plantData.image = img;
+                });
+            }
+
+            window.syncPlantsWithZones();
+            window.saveState();
+            window.populateFilterDropdowns();
+            window.filterPlants();
+            window.renderReserveList();
+            window.renderDesignerCanvas();
+
+            window.clearPlantForm();
+            window.switchPanelTab(owned === 'nee' && zones.toLowerCase().includes('reservelijst') ? 'reserve' : 'catalog');
+        };
+
+        window.pendingDeleteTarget = null;
+
+        window.deletePlantDefinition = function(plantId) {
+            const plant = window.allPlants.find(p => String(p.id) === String(plantId));
+            if (!plant) return;
+
+            window.pendingDeleteTarget = { type: 'single', plantId, name: plant.name };
+            const modal = document.getElementById('delete-confirm-modal');
+            const msg = document.getElementById('delete-confirm-message');
+            const confirmBtn = document.getElementById('btn-execute-delete');
+
+            if (msg) msg.innerText = `Weet je zeker dat je "${plant.name}" wilt verwijderen uit je lijst en van de kaart?`;
+            if (confirmBtn) {
+                confirmBtn.onclick = function() {
+                    window.executePendingDelete();
+                };
+            }
+            if (modal) modal.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.deleteAllPlants = function() {
+            if (window.allPlants.length === 0) return;
+
+            window.pendingDeleteTarget = { type: 'all' };
+            const modal = document.getElementById('delete-confirm-modal');
+            const msg = document.getElementById('delete-confirm-message');
+            const confirmBtn = document.getElementById('btn-execute-delete');
+
+            if (msg) msg.innerText = `Weet je zeker dat je ALLE ${window.allPlants.length} planten wilt verwijderen uit het overzicht en de kaart?`;
+            if (confirmBtn) {
+                confirmBtn.onclick = function() {
+                    window.executePendingDelete();
+                };
+            }
+            if (modal) modal.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.closeDeleteConfirmModal = function() {
+            const modal = document.getElementById('delete-confirm-modal');
+            if (modal) modal.classList.add('hidden');
+            window.pendingDeleteTarget = null;
+        };
+
+        window.executePendingDelete = function() {
+            if (!window.pendingDeleteTarget) return;
+
+            window.pushStateToUndo();
+
+            if (window.pendingDeleteTarget.type === 'single') {
+                const plantId = window.pendingDeleteTarget.plantId;
+
+                // 1. Verwijder plantdefinitie uit de globale lijst
+                window.allPlants = window.allPlants.filter(p => String(p.id) !== String(plantId));
+
+                // 2. Verwijder alle instanties van deze plant uit de tuinvakken op de kaart
+                window.zones.forEach(zone => {
+                    if (zone.plants) {
+                        zone.plants = zone.plants.filter(pInst => String(pInst.plantId) !== String(plantId));
+                    }
+                });
+            } else if (window.pendingDeleteTarget.type === 'all') {
+                window.allPlants = [];
+                window.zones = [];
+            }
+
+            // 3. Synchroniseer, filter en sla op
+            window.syncPlantsWithZones();
+            window.saveState();
+            window.populateFilterDropdowns();
+            window.filterPlants();
+            window.renderReserveList();
+            window.renderDesignerCanvas();
+
+            window.closeDeleteConfirmModal();
+        };
+
+        window.updateBloomMonth = function(monthIdx) {
+            window.currentBloomMonthIndex = parseInt(monthIdx) || 5;
+            localStorage.setItem('garden_bloom_month', window.currentBloomMonthIndex);
+            window.saveState();
+            window.renderDesignerCanvas();
+        };
+
+        window.updateBloomCalendarUI = function() {
+            const monthSlider = document.getElementById('bloom-month-slider');
+            const monthLabel = document.getElementById('bloom-month-label');
+            const bloomCountBadge = document.getElementById('bloom-count-badge');
+            const activeList = document.getElementById('bloom-active-list');
+
+            if (!monthSlider || !monthLabel || !activeList) return;
+
+            const monthNames = ['', 'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
+            const activeMonthName = monthNames[window.currentBloomMonthIndex] || 'Mei';
+
+            monthSlider.value = window.currentBloomMonthIndex;
+            monthLabel.innerText = activeMonthName;
+
+            const bloomingPlants = window.allPlants.filter(p => {
+                const bloomStr = (p.bloom || '').toLowerCase();
+                return bloomStr.includes(activeMonthName.toLowerCase());
+            });
+
+            if (bloomCountBadge) {
+                bloomCountBadge.innerText = `${bloomingPlants.length} in bloei`;
+            }
+
+            if (bloomingPlants.length === 0) {
+                activeList.innerHTML = `<p class="text-[11px] text-slate-400 italic text-center py-2">Geen bloeiende planten in ${activeMonthName}</p>`;
+            } else {
+                activeList.innerHTML = bloomingPlants.map(p => {
+                    const colStyle = window.getPlantColorStyle(p.color);
+                    return `
+                        <div class="flex items-center justify-between text-[11px] bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                            <div class="flex items-center space-x-2 truncate">
+                                <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${colStyle.bg}; border: 1px solid ${colStyle.border};"></div>
+                                <span class="font-medium text-slate-700 truncate">${p.name}</span>
+                            </div>
+                            <span class="text-[10px] text-pink-600 font-semibold bg-pink-50 px-1.5 py-0.5 rounded-full flex-shrink-0">🌸 ${p.bloom || 'Bloei'}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        };
+
+        window.selectZone = function(zoneId) {
+            window.selectedZoneId = zoneId;
+            window.renderDesignerCanvas();
+            window.switchPanelTab('catalog');
+            window.filterPlants();
+        };
+
+        window.clearSelectedZoneFilter = function() {
+            window.selectedZoneId = null;
+            window.renderDesignerCanvas();
+            window.filterPlants();
+        };
+
+        window.toggleAllZones = function() {
+            const anyVisible = window.zones.some(z => z.visible);
+            window.zones.forEach(z => z.visible = !anyVisible);
+            window.saveState();
+            window.renderDesignerCanvas();
+        };
+
+        window.toggleZoneVisibility = function(zoneId, e) {
+            e.stopPropagation();
+            const zone = window.zones.find(z => z.id === zoneId);
+            if (zone) {
+                zone.visible = !zone.visible;
+                window.saveState();
+                window.renderDesignerCanvas();
+            }
+        };
+
+        window.updateModalPlantSize = function(zoneId, instanceId, newSize) {
+            const zone = window.zones.find(z => z.id === zoneId);
+            if (zone) {
+                const p = zone.plants.find(x => x.instanceId === instanceId);
+                if (p) {
+                    p.size = parseInt(newSize) || 26;
+                    const valSpan = document.getElementById('modal-size-val');
+                    if (valSpan) valSpan.innerText = p.size + 'px';
+                    window.saveState();
+                    window.renderDesignerCanvas();
+                }
+            }
+        };
+
+        window.closePlantDetail = function() {
+            document.getElementById('plant-detail-modal').classList.add('hidden');
+            window.activeModalPlantInstance = null;
+        };
+
+        window.handleModalBackdropClick = function(e) {
+            if (e.target.id === 'plant-detail-modal') {
+                window.closePlantDetail();
+            }
+        };
+
+        // --- CSV Modal Handlers ---
+        window.openCsvImportModal = function() {
+            const modal = document.getElementById('csv-import-modal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.closeCsvImportModal = function() {
+            const modal = document.getElementById('csv-import-modal');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        // --- CSV Operations ---
+        window.processRawCsvText = function(csvText) {
+            if (typeof Papa === 'undefined') {
+                return;
+            }
+
+            const rawParsed = Papa.parse(csvText, { skipEmptyLines: 'greedy' });
+            if (!rawParsed.data || rawParsed.data.length < 2) {
+                return;
+            }
+
+            const rawRows = rawParsed.data;
+            const headerRow = rawRows[0].map(h => String(h || '').trim().toLowerCase());
+
+            const findColIndex = (possibleNames) => {
+                for (let name of possibleNames) {
+                    const idx = headerRow.findIndex(h => h === name.toLowerCase());
+                    if (idx !== -1) return idx;
+                }
+                return -1;
+            };
+
+            const nameIdx = findColIndex(['plant', 'naam', 'plantnaam', 'name', 'titel', 'nederlandse naam', 'latijnse naam']);
+            const typeIdx = findColIndex(['type', 'categorie', 'category', 'soort']);
+            const colorIdx = findColIndex(['kleur', 'bloemkleur', 'color']);
+            const lightIdx = findColIndex(['standplaats', 'licht', 'zon', 'light']);
+            const heightIdx = findColIndex(['hoogte', 'height']);
+            const bloomIdx = findColIndex(['bloeiperiode', 'bloeitijd', 'bloei', 'bloom', 'bloeimaand', 'bloeimaanden', 'bloeien']);
+            const zoneIdx = findColIndex(['vak', 'vakken', 'zone', 'zones', 'tuinvak']);
+            const nurseryIdx = findColIndex(['kweker', 'kwekerij', 'winkel', 'waar te koop', 'verkooppunt', 'leverancier', 'shop']);
+            const linkIdx = findColIndex(['link', 'url', 'website', 'info', 'informatie', 'bron']);
+            const notesIdx = findColIndex(['opmerkingen', 'opmerking', 'notities', 'notes', 'beschrijving']);
+            const quantityIdx = findColIndex(['aantal', 'aantallen', 'qty', 'count', 'hoeveelheid']);
+            const ownedIdx = findColIndex(['heb ik?', 'heb ik', 'gekocht', 'in bezit', 'owned']);
+            const imageIdx = findColIndex(['afbeelding', 'foto', 'image', 'img', 'picture']);
+
+            const dataRows = rawRows.slice(1);
+
+            parsedCsvPlants = dataRows.map((rowArr, index) => {
+                const firstCell = rowArr[0] !== undefined && rowArr[0] !== null ? String(rowArr[0]).trim() : '';
+                if (!firstCell) return null;
+
+                const getVal = (idx, fallback = '') => {
+                    if (idx !== -1 && rowArr[idx] !== undefined && rowArr[idx] !== null) {
+                        return String(rowArr[idx]).trim();
+                    }
+                    return fallback;
+                };
+
+                let plantLink = getVal(linkIdx, '');
+                if (!plantLink || !plantLink.startsWith('http')) {
+                    const foundUrlCell = rowArr.find(cell => {
+                        if (!cell) return false;
+                        const str = String(cell).trim();
+                        return str.startsWith('http://') || str.startsWith('https://');
+                    });
+                    if (foundUrlCell) {
+                        plantLink = String(foundUrlCell).trim();
+                    }
+                }
+
+                const customImageFromCol = getVal(imageIdx, '');
+
+                // Kolom J = index 9 (0-indexed: A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9)
+                const nurseryFromColJ = rowArr[9] !== undefined && rowArr[9] !== null ? String(rowArr[9]).trim() : '';
+
+                const name = getVal(nameIdx) || firstCell;
+                const type = getVal(typeIdx, 'Vaste plant');
+                const color = getVal(colorIdx, 'groen').toLowerCase();
+                const light = getVal(lightIdx, 'Halfschaduw / Schaduw');
+                const height = getVal(heightIdx, '');
+                
+                // Omzetten van maandnummers naar maandnamen
+                let rawBloom = getVal(bloomIdx, '');
+                const monthMap = {
+                    '1': 'Januari', '2': 'Februari', '3': 'Maart', '4': 'April',
+                    '5': 'Mei', '6': 'Juni', '7': 'Juli', '8': 'Augustus',
+                    '9': 'September', '10': 'Oktober', '11': 'November', '12': 'December'
+                };
+                
+                let bloom = rawBloom;
+                if (rawBloom) {
+                    bloom = rawBloom.replace(/\b([1-9]|1[0-2])\b/g, (match) => monthMap[match] || match);
+                }
+
+                let rawZones = getVal(zoneIdx, 'Wenslijst');
+                const nursery = nurseryFromColJ || getVal(nurseryIdx, '');
+                const notes = getVal(notesIdx, '');
+                const quantity = getVal(quantityIdx, '1');
+                
+                const hebIkRaw = getVal(ownedIdx, 'ja').toLowerCase();
+                let owned = 'ja';
+                if (hebIkRaw === 'nee' || hebIkRaw === 'no' || hebIkRaw === 'false' || hebIkRaw === '0') {
+                    owned = 'nee';
+                    rawZones = 'Reservelijst';
+                }
+
+                const plantObj = {
+                    id: 'plant-csv-' + Date.now() + '-' + index,
+                    name,
+                    type,
+                    color,
+                    light,
+                    height,
+                    bloom,
+                    zones: rawZones,
+                    owned,
+                    quantity,
+                    nursery,
+                    link: plantLink,
+                    notes,
+                    image: customImageFromCol
+                };
+
+                // Als er geen afbeelding in de nieuwe kolom staat, automatisch ophalen
+                if (!customImageFromCol) {
+                    window.extractImageFromUrl(plantObj).then(img => {
+                        if (img) plantObj.image = img;
+                    });
+                }
+
+                return plantObj;
+            }).filter(Boolean);
+
+            const countEl = document.getElementById('csv-preview-summary');
+            const previewCount = document.getElementById('csv-preview-count');
+            const confirmBtn = document.getElementById('btn-confirm-import');
+
+            if (previewCount) previewCount.innerText = `${parsedCsvPlants.length} planten succesvol gelezen!`;
+            if (countEl) countEl.classList.remove('hidden');
+            if (confirmBtn) confirmBtn.disabled = false;
+        };
+
+        window.handleCsvFileSelect = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                window.processRawCsvText(evt.target.result);
+            };
+            reader.readAsText(file);
+        };
+
+        window.fetchCsvFromUrl = async function() {
+            // Deprecated / replaced by fetchDefaultGardenSheet
+        };
+
+        window.fetchDefaultGardenSheet = async function() {
+            const rawUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQpPx2dcL_HkAnxs_PhSg582oFExs3fyQsFMsCZPzKG-NfYnuRYRiVNjEMGXDNesr1aYqTXBZvTn11I/pubhtml';
+            let csvUrl = rawUrl;
+            if (csvUrl.includes('/pubhtml')) {
+                csvUrl = csvUrl.replace('/pubhtml', '/pub?output=csv');
+            } else if (!csvUrl.includes('output=csv')) {
+                csvUrl = csvUrl.split('?')[0].replace(/\/+$/, '') + '/pub?output=csv';
+            }
+
+            try {
+                const cacheBustUrl = csvUrl + (csvUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+                const response = await fetch(cacheBustUrl);
+                if (!response.ok) throw new Error(`HTTP Fout ${response.status}`);
+                const csvText = await response.text();
+                window.processRawCsvText(csvText);
+            } catch (err) {
+                // Foutafhandeling zonder alert()
+            }
+        };
+
+        window.executeCsvImport = function() {
+            if (parsedCsvPlants.length === 0) return;
+
+            window.pushStateToUndo();
+
+            // Bewaar huidige posities en unieke instanties van bestaande planten per vak
+            const existingPlantPositions = new Map(); // plantName (lowercase) -> [{x, y, size, zoneName}]
+            window.zones.forEach(zone => {
+                (zone.plants || []).forEach(inst => {
+                    const def = window.allPlants.find(p => String(p.id) === String(inst.plantId));
+                    if (def) {
+                        const key = def.name.trim().toLowerCase();
+                        if (!existingPlantPositions.has(key)) {
+                            existingPlantPositions.set(key, []);
+                        }
+                        existingPlantPositions.get(key).push({
+                            x: inst.x,
+                            y: inst.y,
+                            size: inst.size || 26,
+                            zoneName: zone.name
+                        });
+                    }
+                });
+            });
+
+            // Update de plantendatabase met de nieuw ingelezen planten, met behoud van bestaande ID's en handmatige foto's
+            window.allPlants = parsedCsvPlants.map(newPlant => {
+                const key = newPlant.name.trim().toLowerCase();
+                const oldPlant = window.allPlants.find(p => p.name.trim().toLowerCase() === key);
+                
+                if (oldPlant) {
+                    newPlant.id = oldPlant.id;
+                    if (!newPlant.image && oldPlant.image) {
+                        newPlant.image = oldPlant.image;
+                    }
+                }
+                return newPlant;
+            });
+
+            window.syncPlantsWithZones();
+
+            window.zones.forEach(zone => {
+                (zone.plants || []).forEach(inst => {
+                    const plantDef = window.allPlants.find(p => String(p.id) === String(inst.plantId));
+                    if (plantDef) {
+                        const key = plantDef.name.trim().toLowerCase();
+                        const savedPositions = existingPlantPositions.get(key);
+                        if (savedPositions && savedPositions.length > 0) {
+                            const matchInZone = savedPositions.find(sp => sp.zoneName.toLowerCase() === zone.name.toLowerCase());
+                            const posToUse = matchInZone || savedPositions[0];
+                            
+                            inst.x = posToUse.x;
+                            inst.y = posToUse.y;
+                            inst.size = posToUse.size;
+
+                            const idx = savedPositions.indexOf(posToUse);
+                            if (idx !== -1) savedPositions.splice(idx, 1);
+                        }
+                    }
+                });
+            });
+
+            window.saveState();
+            window.populateFilterDropdowns();
+            window.filterPlants();
+            window.renderReserveList();
+            window.renderDesignerCanvas();
+
+            window.closeCsvImportModal();
+        };
+
+        // --- Export Function ---
+        window.exportGardenStudio = function() {
+            // Sla huidige status op in localStorage zodat de export deze overneemt
+            localStorage.setItem('garden_plants', JSON.stringify(window.allPlants));
+            localStorage.setItem('garden_zones', JSON.stringify(window.zones));
+            localStorage.setItem('garden_panels_layout', JSON.stringify(window.panelLayouts));
+            localStorage.setItem('garden_bloom_month', window.currentBloomMonthIndex);
+
+            // Haal de volledige HTML-broncode van de huidige pagina op
+            const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Tuinbeplantingsplan_${new Date().toISOString().slice(0, 10)}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+
+        // --- App Lifecycle Initialization ---
         window.addEventListener('DOMContentLoaded', async () => {
-            applyPanelPositions();
-            setupGlobalMouseEvents();
-            updateCanvasTransform();
+            window.applyPanelPositions();
+            window.setupGlobalMouseEvents();
+            window.updateCanvasTransform();
+            
+            // Explicit Event Listeners for Undo / Redo buttons
+            const btnUndo = document.getElementById('btn-undo');
+            const btnRedo = document.getElementById('btn-redo');
+            if (btnUndo) btnUndo.addEventListener('click', (e) => { e.preventDefault(); window.undo(); });
+            if (btnRedo) btnRedo.addEventListener('click', (e) => { e.preventDefault(); window.redo(); });
+
+            window.updateUndoRedoUI();
             if (window.lucide) lucide.createIcons();
 
-            // Stap 1: Altijd EERST de Google Sheet data ophalen
-            await loadPlantDataFromSheet();
-
-            // Stap 2: Daarna verbinden met Firebase en de locaties/vakken inladen
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
@@ -333,873 +2140,55 @@
                         const data = docSnap.data();
                         if (data.panelLayouts) {
                             window.panelLayouts = data.panelLayouts;
-                            applyPanelPositions();
+                            window.applyPanelPositions();
                         }
-                        if (data.zones && data.zones.length > 0) {
-                            // Merge Firebase vakken met de actuele Google Sheet data
-                            // Planten die niet meer in de sheet staan worden automatisch weggefilterd.
-                            mergeFirebaseZonesWithSheetData(data.zones);
+                        if (data.bloomMonth) {
+                            window.currentBloomMonthIndex = parseInt(data.bloomMonth) || 5;
+                            localStorage.setItem('garden_bloom_month', window.currentBloomMonthIndex);
                         }
+                        // Accepteer een lege array ([]) in plaats van terug te vallen op DEFAULT_PLANTS
+                        window.allPlants = Array.isArray(data.allPlants) ? data.allPlants : DEFAULT_PLANTS;
+                        window.zones = Array.isArray(data.zones) ? data.zones : [];
                     } else {
+                        window.allPlants = DEFAULT_PLANTS;
                         window.saveState();
                     }
-                    cloudDataLoaded = true;
-                    renderDesignerCanvas();
-                    renderZoneManagerPanel();
-                    updateCloudStatus('synced', 'In jouw Firebase cloud opgeslagen');
+
+                    window.syncPlantsWithZones();
+                    window.populateFilterDropdowns();
+                    window.filterPlants();
+                    window.renderDesignerCanvas();
+                    window.updateCloudStatus('synced', 'Verbonden');
                 }, (error) => {
-                    console.warn("Firestore luisteraar waarschuwing:", error);
-                    updateCloudStatus('local', `Lokaal (Firestore fout: ${error.code || 'permission-denied'})`);
+                    console.warn("Firestore listener warning:", error);
+                    window.updateCloudStatus('local', 'Lokaal');
                     fallbackToLocalStorage();
                 });
 
             } catch (e) {
                 console.warn("Cloud init error, falling back to localStorage", e);
-                updateCloudStatus('local', `Lokaal (Auth fout: ${e.code || 'niet actief'})`);
+                window.updateCloudStatus('local', 'Lokaal');
                 fallbackToLocalStorage();
             }
         });
 
         function fallbackToLocalStorage() {
+            const localPlants = JSON.parse(localStorage.getItem('garden_plants'));
+            window.allPlants = Array.isArray(localPlants) ? localPlants : DEFAULT_PLANTS;
+
             const localZones = JSON.parse(localStorage.getItem('garden_zones'));
-            if (localZones && localZones.length > 0) {
-                mergeFirebaseZonesWithSheetData(localZones);
-            }
+            if (localZones) window.zones = localZones;
+
             const localPanels = JSON.parse(localStorage.getItem('garden_panels_layout'));
             if (localPanels) {
                 window.panelLayouts = localPanels;
-                applyPanelPositions();
-            }
-            renderDesignerCanvas();
-            renderZoneManagerPanel();
-        }
-
-        function mergeFirebaseZonesWithSheetData(firebaseZones) {
-            window.zones = firebaseZones.map(fz => {
-                // Filter alleen plant-instanties waarvan de plant nog daadwerkelijk in window.allPlants (Google Sheet) staat
-                const validPlants = (fz.plants || []).map(pInst => {
-                    const foundDirect = window.allPlants.find(p => p.id === pInst.plantId);
-                    if (foundDirect) return pInst;
-
-                    if (pInst.plantName) {
-                        const foundByName = window.allPlants.find(p => p.name.toLowerCase() === pInst.plantName.toLowerCase());
-                        if (foundByName) {
-                            return { ...pInst, plantId: foundByName.id };
-                        }
-                    }
-                    return null; // Als plant niet meer in Sheet staat, wordt deze null
-                }).filter(pInst => pInst !== null && window.allPlants.some(p => p.id === pInst.plantId));
-
-                return {
-                    ...fz,
-                    plants: validPlants
-                };
-            });
-        }
-
-        window.forceReloadSheetAndReset = async function() {
-            localStorage.removeItem('garden_zones');
-            await loadPlantDataFromSheet();
-            window.saveState();
-        }
-
-        function updateCloudStatus(status, text) {
-            const badge = document.getElementById('cloud-status');
-            const txt = document.getElementById('cloud-status-text');
-            if (!badge || !txt) return;
-
-            badge.classList.remove('hidden', 'bg-amber-50', 'text-amber-600', 'border-amber-200', 'bg-emerald-50', 'text-emerald-700', 'border-emerald-200', 'bg-slate-50', 'text-slate-600', 'border-slate-200');
-            if (status === 'synced') {
-                badge.classList.add('bg-emerald-50', 'text-emerald-700', 'border-emerald-200');
-                badge.innerHTML = `<i data-lucide="cloud-check" class="w-3.5 h-3.5"></i><span id="cloud-status-text">${text}</span>`;
-            } else if (status === 'saving') {
-                badge.classList.add('bg-amber-50', 'text-amber-600', 'border-amber-200');
-                badge.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span id="cloud-status-text">${text}</span>`;
-            } else {
-                badge.classList.add('bg-slate-50', 'text-slate-600', 'border-slate-200');
-                badge.innerHTML = `<i data-lucide="hard-drive" class="w-3.5 h-3.5"></i><span id="cloud-status-text">${text}</span>`;
-            }
-            if (window.lucide) lucide.createIcons();
-        }
-
-        window.saveState = function() {
-            localStorage.setItem('garden_zones', JSON.stringify(window.zones));
-            localStorage.setItem('garden_panels_layout', JSON.stringify(window.panelLayouts));
-
-            if (!db || !isCloudConnected) return;
-            updateCloudStatus('saving', 'Opslaan in Firebase...');
-            if (saveTimeout) clearTimeout(saveTimeout);
-
-            saveTimeout = setTimeout(async () => {
-                try {
-                    const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
-                    await setDoc(stateDocRef, {
-                        zones: window.zones,
-                        panelLayouts: window.panelLayouts,
-                        updatedAt: new Date().toISOString()
-                    });
-                    updateCloudStatus('synced', 'In jouw Firebase cloud opgeslagen');
-                } catch (e) {
-                    console.warn("Cloud save warning (saved locally):", e.message);
-                    updateCloudStatus('local', 'Lokaal opgeslagen');
-                }
-            }, 600);
-        }
-
-        // --- Viewport & Canvas Controls ---
-        window.updateCanvasTransform = function() {
-            const canvas = document.getElementById('design-canvas');
-            if (canvas) {
-                canvas.style.transform = `translate(${window.panX}px, ${window.panY}px) scale(${window.scale})`;
-            }
-        }
-
-        window.resetCanvasView = function() {
-            window.panX = 200;
-            window.panY = 150;
-            window.scale = 1;
-            updateCanvasTransform();
-        }
-
-        window.startPan = function(e) {
-            if (e.target.closest('.floating-panel') || e.target.closest('.plant-dot') || e.target.closest('.zone-resize-handle') || e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
-            window.isPanning = true;
-            window.startPanX = e.clientX - window.panX;
-            window.startPanY = e.clientY - window.panY;
-            e.preventDefault();
-        }
-
-        window.handleZoom = function(e) {
-            if (e.target.closest('.floating-panel')) return;
-            e.preventDefault();
-            
-            const viewport = document.getElementById('canvas-viewport');
-            const rect = viewport.getBoundingClientRect();
-            
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            let prevScale = window.scale;
-            if (e.deltaY < 0) {
-                window.scale = Math.min(window.scale * 1.15, 3.0);
-            } else {
-                window.scale = Math.max(window.scale / 1.15, 0.3);
+                window.applyPanelPositions();
             }
 
-            window.panX = mouseX - (mouseX - window.panX) * (window.scale / prevScale);
-            window.panY = mouseY - (mouseY - window.panY) * (window.scale / prevScale);
-
-            updateCanvasTransform();
-        }
-
-        window.applyPanelPositions = function() {
-            Object.keys(window.panelLayouts).forEach(key => {
-                const panel = document.getElementById(key === 'filter' ? 'floating-filter-panel' : 'floating-manager-panel');
-                if (!panel) return;
-                const conf = window.panelLayouts[key];
-                panel.style.left = conf.x + 'px';
-                panel.style.top = conf.y + 'px';
-                panel.style.width = conf.w + 'px';
-                
-                const minBtn = panel.querySelector('.minimize-btn i');
-                const bodyContent = panel.querySelector('.panel-body-content');
-                const resizeHandle = panel.querySelector('.panel-resize-handle');
-
-                if (conf.minimized) {
-                    panel.style.height = 'auto';
-                    if (bodyContent) bodyContent.classList.add('hidden');
-                    if (resizeHandle) resizeHandle.classList.add('hidden');
-                    if (minBtn) minBtn.setAttribute('data-lucide', 'maximize-2');
-                } else {
-                    panel.style.height = conf.h + 'px';
-                    if (bodyContent) bodyContent.classList.remove('hidden');
-                    if (resizeHandle) resizeHandle.classList.remove('hidden');
-                    if (minBtn) minBtn.setAttribute('data-lucide', 'minimize-2');
-                }
-            });
-            if (window.lucide) lucide.createIcons();
-        }
-
-        window.togglePanelMinimize = function(panelKey, e) {
-            e.stopPropagation();
-            window.panelLayouts[panelKey].minimized = !window.panelLayouts[panelKey].minimized;
-            window.saveState();
-            applyPanelPositions();
-        }
-
-        window.resetAllPanelPositions = function() {
-            window.panelLayouts = {
-                filter: { x: 30, y: 70, w: 320, h: 580, minimized: false },
-                manager: { x: 370, y: 70, w: 340, h: 580, minimized: false }
-            };
-            window.saveState();
-            applyPanelPositions();
-            resetCanvasView();
-        }
-
-        window.toggleAllZones = function() {
-            const allVisible = window.zones.every(z => z.visible);
-            window.zones.forEach(z => z.visible = !allVisible);
-            window.saveState();
-            renderDesignerCanvas();
-            renderZoneManagerPanel();
-        }
-
-        function setupGlobalMouseEvents() {
-            window.addEventListener('mousemove', (e) => {
-                if (window.isPanning) {
-                    window.panX = e.clientX - window.startPanX;
-                    window.panY = e.clientY - window.startPanY;
-                    updateCanvasTransform();
-                    return;
-                }
-
-                if (!window.dragType) return;
-
-                if (window.dragType === 'panel-drag') {
-                    let nx = e.clientX - window.dragOffsetX;
-                    let ny = e.clientY - window.dragOffsetY;
-                    window.panelLayouts[window.activePanelKey].x = Math.max(0, nx);
-                    window.panelLayouts[window.activePanelKey].y = Math.max(0, ny);
-                    applyPanelPositions();
-                } else if (window.dragType === 'panel-resize') {
-                    let nw = e.clientX + window.dragOffsetX - window.panelLayouts[window.activePanelKey].x;
-                    let nh = e.clientY + window.dragOffsetY - window.panelLayouts[window.activePanelKey].y;
-                    window.panelLayouts[window.activePanelKey].w = Math.max(260, nw);
-                    window.panelLayouts[window.activePanelKey].h = Math.max(200, nh);
-                    window.saveState();
-                    applyPanelPositions();
-                } else if (window.dragType === 'zone') {
-                    const canvasRect = document.getElementById('design-canvas').getBoundingClientRect();
-                    const zone = window.zones.find(z => z.id === window.dragTarget);
-                    if (zone) {
-                        zone.x = Math.max(0, (e.clientX - canvasRect.left) / window.scale - window.dragOffsetX);
-                        zone.y = Math.max(0, (e.clientY - canvasRect.top) / window.scale - window.dragOffsetY);
-                        renderDesignerCanvas();
-                    }
-                } else if (window.dragType === 'zone-resize') {
-                    const canvasRect = document.getElementById('design-canvas').getBoundingClientRect();
-                    const zone = window.zones.find(z => z.id === window.dragTarget);
-                    if (zone) {
-                        zone.w = Math.max(160, (e.clientX - canvasRect.left) / window.scale - zone.x + window.dragOffsetX);
-                        zone.h = Math.max(140, (e.clientY - canvasRect.top) / window.scale - zone.y + window.dragOffsetY);
-                        renderDesignerCanvas();
-                    }
-                } else if (window.dragType === 'plant') {
-                    const canvasRect = document.getElementById('design-canvas').getBoundingClientRect();
-                    const zone = window.zones.find(z => z.id === window.dragTarget.zoneId);
-                    if (zone) {
-                        const plantInst = zone.plants.find(p => p.instanceId === window.dragTarget.instanceId);
-                        if (plantInst) {
-                            let nx = (e.clientX - canvasRect.left) / window.scale - zone.x - window.dragOffsetX;
-                            let ny = (e.clientY - canvasRect.top) / window.scale - zone.y - window.dragOffsetY;
-                            plantInst.x = Math.max(16, Math.min(zone.w - 24, nx));
-                            plantInst.y = Math.max(36, Math.min(zone.h - 24, ny));
-                            renderDesignerCanvas();
-                        }
-                    }
-                }
-            });
-
-            window.addEventListener('mouseup', () => {
-                window.isPanning = false;
-                if (window.dragType) {
-                    window.dragType = null;
-                    window.dragTarget = null;
-                    window.saveState();
-                }
-            });
-        }
-
-        window.initPanelDrag = function(e, panelKey) {
-            if (e.target.closest('button')) return;
-            window.dragType = 'panel-drag';
-            window.activePanelKey = panelKey;
-            const conf = window.panelLayouts[panelKey];
-            window.dragOffsetX = e.clientX - conf.x;
-            window.dragOffsetY = e.clientY - conf.y;
-            e.stopPropagation();
-            e.preventDefault();
-        }
-
-        window.initPanelResize = function(e, panelKey) {
-            window.dragType = 'panel-resize';
-            window.activePanelKey = panelKey;
-            const conf = window.panelLayouts[panelKey];
-            window.dragOffsetX = conf.x - e.clientX;
-            window.dragOffsetY = conf.y - e.clientY;
-            e.stopPropagation();
-            e.preventDefault();
-        }
-
-        window.initZoneDrag = function(e, zoneId) {
-            if (e.target.closest('button') || e.target.closest('.plant-dot') || e.target.closest('.zone-resize-handle')) return;
-            window.dragType = 'zone';
-            window.dragTarget = zoneId;
-            const zone = window.zones.find(z => z.id === zoneId);
-            const canvasRect = document.getElementById('design-canvas').getBoundingClientRect();
-            window.dragOffsetX = (e.clientX - canvasRect.left) / window.scale - zone.x;
-            window.dragOffsetY = (e.clientY - canvasRect.top) / window.scale - zone.y;
-            window.selectedZoneId = zoneId;
-            renderZoneManagerPanel();
-            renderDesignerCanvas();
-            e.stopPropagation();
-            e.preventDefault();
-        }
-
-        window.initZoneResize = function(e, zoneId) {
-            window.dragType = 'zone-resize';
-            window.dragTarget = zoneId;
-            const zone = window.zones.find(z => z.id === zoneId);
-            const canvasRect = document.getElementById('design-canvas').getBoundingClientRect();
-            window.dragOffsetX = (canvasRect.left + zone.x * window.scale + zone.w * window.scale) - e.clientX;
-            window.dragOffsetY = (canvasRect.top + zone.y * window.scale + zone.h * window.scale) - e.clientY;
-            window.selectedZoneId = zoneId;
-            e.stopPropagation();
-            e.preventDefault();
-        }
-
-        window.initPlantDrag = function(e, zoneId, instanceId) {
-            window.dragType = 'plant';
-            window.dragTarget = { zoneId, instanceId };
-            const canvasRect = document.getElementById('design-canvas').getBoundingClientRect();
-            const zone = window.zones.find(z => z.id === zoneId);
-            const plantInst = zone.plants.find(p => p.instanceId === instanceId);
-            window.dragOffsetX = (e.clientX - canvasRect.left) / window.scale - zone.x - plantInst.x;
-            window.dragOffsetY = (e.clientY - canvasRect.top) / window.scale - zone.y - plantInst.y;
-            window.selectedZoneId = zoneId;
-            e.stopPropagation();
-            e.preventDefault();
-        }
-
-        // --- GOOGLE SHEETS DATA LADEN ---
-        window.loadPlantDataFromSheet = function() {
-            return new Promise((resolve) => {
-                const statusEl = document.getElementById('sheet-status');
-                if (statusEl) statusEl.innerText = "Bezig met ophalen planten uit Google Sheet...";
-
-                let csvUrl = CSV_URL;
-                if (csvUrl.includes('/pubhtml')) {
-                    csvUrl = csvUrl.replace('/pubhtml', '/pub?output=csv');
-                }
-                // Cache buster toevoegen om altijd de verse Google Sheet data op te halen
-                csvUrl += (csvUrl.includes('?') ? '&' : '?') + '_t=' + new Date().getTime();
-
-                Papa.parse(csvUrl, {
-                    download: true,
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        processSheetData(results.data, statusEl);
-                        resolve();
-                    },
-                    error: function() {
-                        const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(csvUrl);
-                        Papa.parse(proxyUrl, {
-                            download: true,
-                            header: true,
-                            skipEmptyLines: true,
-                            complete: function(res) {
-                                processSheetData(res.data, statusEl);
-                                resolve();
-                            },
-                            error: function() {
-                                if (statusEl) statusEl.innerText = "Fout bij laden Google Sheet.";
-                                resolve();
-                            }
-                        });
-                    }
-                });
-            });
-        }
-
-        function processSheetData(rows, statusEl) {
-            if (!rows || rows.length === 0) {
-                if (statusEl) statusEl.innerText = "Geen plantendata gevonden in Google Sheet.";
-                return;
-            }
-
-            window.allPlants = [];
-            let csvZonesMap = {};
-
-            rows.forEach((row, index) => {
-                const name = row['Plantnaam'] || row['Naam'] || row['Plant'] || row[Object.keys(row)[0]];
-                if (!name || name.trim() === '') return;
-
-                const type = row['Type'] || row['Categorie'] || 'Vaste plant';
-                const color = (row['Kleur'] || row['Bloemkleur'] || 'groen').toLowerCase().trim();
-                const light = row['Standplaats'] || row['Licht'] || 'Zon';
-                const height = row['Hoogte'] || '50cm';
-                const bloom = row['Bloeitijd'] || 'Zomer';
-                
-                let zoneName = row['Vak'] || row['Zone'] || row['Tuinvak'] || 'Wenslijst';
-                if (zoneName.toLowerCase() === 'hoofdvak') {
-                    zoneName = 'Wenslijst';
-                }
-
-                const plantId = 'plant-' + (row['ID'] || index);
-
-                const plantObj = {
-                    id: plantId,
-                    name: name.trim(),
-                    type: type.trim(),
-                    color: color.trim(),
-                    light: light.trim(),
-                    height: height.trim(),
-                    bloom: bloom.trim(),
-                    raw: row
-                };
-                window.allPlants.push(plantObj);
-
-                if (!csvZonesMap[zoneName]) {
-                    csvZonesMap[zoneName] = [];
-                }
-                csvZonesMap[zoneName].push(plantObj);
-            });
-
-            // Als er nog helemaal geen zones zijn, maken we ze aan op basis van de Google Sheet kolommen
-            if (!window.zones || window.zones.length === 0) {
-                let initialZones = [];
-                let startX = 100;
-                let startY = 100;
-                let colCount = 0;
-
-                Object.keys(csvZonesMap).forEach((zName, zIndex) => {
-                    let zPlants = csvZonesMap[zName].map((p, pIdx) => ({
-                        instanceId: 'inst-' + zIndex + '-' + pIdx,
-                        plantId: p.id,
-                        plantName: p.name,
-                        x: 40 + (pIdx % 4) * 85,
-                        y: 50 + Math.floor(pIdx / 4) * 75,
-                        size: 26
-                    }));
-
-                    initialZones.push({
-                        id: 'zone-' + zIndex,
-                        name: zName,
-                        x: startX,
-                        y: startY,
-                        w: 420,
-                        h: 360,
-                        color: zName.toLowerCase().includes('wens') ? 'bg-emerald-50/95' : 'bg-green-50/95',
-                        visible: true,
-                        plants: zPlants
-                    });
-
-                    startX += 460;
-                    colCount++;
-                    if (colCount >= 3) {
-                        startX = 100;
-                        startY += 400;
-                        colCount = 0;
-                    }
-                });
-
-                window.zones = initialZones;
-            } else {
-                // Zorg ervoor dat eventuele nieuwe vakken uit de Google Sheet ook worden toegevoegd
-                Object.keys(csvZonesMap).forEach(zName => {
-                    let existingZone = window.zones.find(z => z.name.toLowerCase() === zName.toLowerCase());
-                    if (!existingZone) {
-                        let zPlants = csvZonesMap[zName].map((p, pIdx) => ({
-                            instanceId: 'inst-' + Math.random().toString(36).substring(2, 9),
-                            plantId: p.id,
-                            plantName: p.name,
-                            x: 40 + (pIdx % 4) * 85,
-                            y: 50 + Math.floor(pIdx / 4) * 75,
-                            size: 26
-                        }));
-                        window.zones.push({
-                            id: 'zone-' + Math.random().toString(36).substring(2, 7),
-                            name: zName,
-                            x: 100 + (window.zones.length % 3) * 460,
-                            y: 100 + Math.floor(window.zones.length / 3) * 400,
-                            w: 420,
-                            h: 360,
-                            color: 'bg-green-50/95',
-                            visible: true,
-                            plants: zPlants
-                        });
-                    }
-                });
-            }
-
-            if (statusEl) statusEl.innerText = `${window.allPlants.length} planten geladen uit Google Sheet.`;
-            populateFilterDropdowns();
-            filterPlants();
-            
-            if (!window.selectedZoneId && window.zones.length > 0) {
-                window.selectedZoneId = window.zones[0].id;
-            }
-            
-            renderDesignerCanvas();
-            renderZoneManagerPanel();
-        }
-
-        window.populateFilterDropdowns = function() {
-            const typeSelect = document.getElementById('filter-type');
-            const colorSelect = document.getElementById('filter-color');
-            if (!typeSelect || !colorSelect) return;
-
-            const types = [...new Set(window.allPlants.map(p => p.type))].filter(Boolean).sort();
-            const colors = [...new Set(window.allPlants.map(p => p.color))].filter(Boolean).sort();
-
-            typeSelect.innerHTML = `<option value="">Alle typen (${window.allPlants.length})</option>` + types.map(t => `<option value="${t}">${t}</option>`).join('');
-            colorSelect.innerHTML = `<option value="">Alle kleuren</option>` + colors.map(c => `<option value="${c}">${c}</option>`).join('');
-        }
-
-        window.filterPlants = function() {
-            const query = (document.getElementById('plant-search')?.value || '').toLowerCase();
-            const selectedType = document.getElementById('filter-type')?.value || '';
-            const selectedColor = document.getElementById('filter-color')?.value || '';
-
-            const filtered = window.allPlants.filter(p => {
-                const matchQuery = p.name.toLowerCase().includes(query) || p.type.toLowerCase().includes(query);
-                const matchType = !selectedType || p.type === selectedType;
-                const matchColor = !selectedColor || p.color === selectedColor;
-                return matchQuery && matchType && matchColor;
-            });
-
-            renderPlantCatalogList(filtered);
-        }
-
-        function renderPlantCatalogList(plants) {
-            const container = document.getElementById('plant-catalog-list');
-            if (!container) return;
-
-            if (plants.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Geen planten gevonden in sheet.</p>`;
-                return;
-            }
-
-            container.innerHTML = plants.map(plant => {
-                const colStyle = getPlantColorStyle(plant.color);
-                const isSelected = window.selectedPlantCatalogId === plant.id;
-                const borderClass = isSelected ? 'border-2 border-botanic-600 bg-botanic-50/50' : 'border-slate-200 hover:border-botanic-400 bg-slate-50/50';
-
-                return `
-                    <div onclick="selectPlantCatalog('${plant.id}')" 
-                         class="border rounded-xl p-2.5 transition cursor-pointer flex items-center justify-between group ${borderClass}">
-                        <div class="flex items-center space-x-2.5 truncate">
-                            <div class="w-4 h-4 rounded-full flex-shrink-0 border shadow-sm" style="background-color: ${colStyle.bg}; border-color: ${colStyle.border};"></div>
-                            <div class="truncate">
-                                <p class="font-bold text-slate-800 text-xs truncate">${plant.name}</p>
-                                <p class="text-[10px] text-slate-500 truncate">${plant.type} • <span class="capitalize">${plant.color}</span></p>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-1 flex-shrink-0">
-                            <button onclick="event.stopPropagation(); openPlantDetail('${plant.id}')" class="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition" title="Meer info">
-                                <i data-lucide="info" class="w-3.5 h-3.5"></i>
-                            </button>
-                            <button onclick="event.stopPropagation(); quickAddPlantToFirstZone('${plant.id}')" class="p-1 hover:bg-botanic-100 rounded text-botanic-700 transition" title="Voeg toe aan vak">
-                                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            if (window.lucide) lucide.createIcons();
-        }
-
-        window.selectPlantCatalog = function(plantId) {
-            window.selectedPlantCatalogId = plantId;
-            filterPlants();
-        }
-
-        function getPlantColorStyle(colorName) {
-            const c = (colorName || '').toLowerCase();
-            if (c.includes('geel') || c.includes('yellow') || c.includes('goud')) return { bg: '#facc15', border: '#ca8a04', text: '#1e293b' };
-            if (c.includes('roze') || c.includes('pink')) return { bg: '#f472b6', border: '#db2777', text: '#ffffff' };
-            if (c.includes('paars') || c.includes('violet') || c.includes('lila')) return { bg: '#a855f7', border: '#7e22ce', text: '#ffffff' };
-            if (c.includes('blauw') || c.includes('blue')) return { bg: '#3b82f6', border: '#1d4ed8', text: '#ffffff' };
-            if (c.includes('wit') || c.includes('white')) return { bg: '#ffffff', border: '#94a3b8', text: '#0f172a' };
-            if (c.includes('rood') || c.includes('red')) return { bg: '#ef4444', border: '#b91c1c', text: '#ffffff' };
-            if (c.includes('oranje') || c.includes('orange')) return { bg: '#fb923c', border: '#c2410c', text: '#ffffff' };
-            return { bg: '#22c55e', border: '#15803d', text: '#ffffff' };
-        }
-
-        window.toggleZoneVisibility = function(zoneId, e) {
-            e.stopPropagation();
-            const zone = window.zones.find(z => z.id === zoneId);
-            if (zone) {
-                zone.visible = !zone.visible;
-                window.saveState();
-                renderDesignerCanvas();
-                renderZoneManagerPanel();
-            }
-        }
-
-        window.renderDesignerCanvas = function() {
-            const container = document.getElementById('canvas-content-container');
-            if (!container) return;
-            let html = '';
-
-            window.zones.forEach(zone => {
-                if (!zone.visible) return;
-                const isSelected = window.selectedZoneId === zone.id;
-                const borderClass = isSelected ? 'border-2 border-botanic-600 shadow-2xl ring-2 ring-botanic-200' : 'border border-slate-300 shadow-lg';
-
-                html += `
-                    <div class="absolute rounded-2xl ${zone.color} ${borderClass} transition-shadow flex flex-col overflow-hidden select-none"
-                         style="left: ${zone.x}px; top: ${zone.y}px; width: ${zone.w}px; height: ${zone.h}px;"
-                         onmousedown="initZoneDrag(event, '${zone.id}')"
-                         onclick="selectZone('${zone.id}')">
-                         
-                        <div class="bg-white/95 backdrop-blur-sm px-3.5 py-2 border-b border-slate-200 flex items-center justify-between cursor-move">
-                            <div class="flex items-center space-x-2 truncate">
-                                <span class="font-bold text-slate-800 text-xs truncate">${zone.name}</span>
-                                <span class="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">${zone.plants.length}</span>
-                            </div>
-                            <button onclick="toggleZoneVisibility('${zone.id}', event)" class="p-1 hover:bg-slate-200 rounded text-botanic-700 transition" title="Verberg vak">
-                                <i data-lucide="eye" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-
-                        <div class="relative flex-grow">
-                `;
-
-                zone.plants.forEach(plantInst => {
-                    const plantData = window.allPlants.find(p => p.id === plantInst.plantId) || window.allPlants.find(p => p.name.toLowerCase() === (plantInst.plantName || '').toLowerCase()) || { name: plantInst.plantName || 'Onbekend', color: 'groen' };
-                    const colStyle = getPlantColorStyle(plantData.color);
-                    const size = plantInst.size || 26;
-
-                    html += `
-                        <div class="plant-dot absolute group cursor-pointer flex items-center justify-center transition-transform hover:scale-110"
-                             style="left: ${plantInst.x - size/2}px; top: ${plantInst.y - size/2}px; width: ${size}px; height: ${size}px;"
-                             onmousedown="initPlantDrag(event, '${zone.id}', '${plantInst.instanceId}')"
-                             onclick="openPlantDetail('${plantData.id || plantInst.plantId}', '${zone.id}', '${plantInst.instanceId}')"
-                             title="${plantData.name} - Klik voor info">
-                             
-                            <div class="w-full h-full rounded-full shadow-md flex items-center justify-center text-[10px] font-bold border-2"
-                                 style="background-color: ${colStyle.bg}; color: ${colStyle.text}; border-color: ${colStyle.border};">
-                                •
-                            </div>
-
-                            <div class="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-0.5 rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
-                                ${plantData.name} (${size}px)
-                            </div>
-                        </div>
-                    `;
-                });
-
-                html += `
-                        </div>
-                        <div class="zone-resize-handle" onmousedown="initZoneResize(event, '${zone.id}')" title="Sleep om vak te vergroten"></div>
-                    </div>
-                `;
-            });
-
-            container.innerHTML = html;
-            if (window.lucide) lucide.createIcons();
-        }
-
-        window.selectZone = function(zoneId) {
-            window.selectedZoneId = zoneId;
-            renderDesignerCanvas();
-            renderZoneManagerPanel();
-        }
-
-        window.renderZoneManagerPanel = function() {
-            const titleEl = document.getElementById('designer-zone-title');
-            const plantsContainer = document.getElementById('designer-zone-plants');
-            const btnAdd = document.getElementById('btn-add-plant-to-zone');
-
-            if (!window.selectedZoneId) {
-                if (titleEl) titleEl.innerText = "Selecteer vak op canvas";
-                if (plantsContainer) plantsContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Klik op een vak in de tuinkaart om de inhoud te beheren.</p>`;
-                if (btnAdd) btnAdd.classList.add('hidden');
-                if (window.lucide) lucide.createIcons();
-                return;
-            }
-
-            const zone = window.zones.find(z => z.id === window.selectedZoneId);
-            if (!zone) return;
-
-            if (titleEl) titleEl.innerText = `Inhoud van: ${zone.name}`;
-            if (btnAdd) btnAdd.classList.remove('hidden');
-
-            let pHtml = '';
-            if (zone.plants.length === 0) {
-                pHtml = `<p class="text-xs text-slate-400 text-center py-4">Geen planten in dit vak.</p>`;
-            } else {
-                zone.plants.forEach(plantInst => {
-                    const plantData = window.allPlants.find(p => p.id === plantInst.plantId) || window.allPlants.find(p => p.name.toLowerCase() === (plantInst.plantName || '').toLowerCase()) || { name: plantInst.plantName || 'Onbekend', color: 'groen', type: 'Vaste plant' };
-                    const colStyle = getPlantColorStyle(plantData.color);
-
-                    pHtml += `
-                        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 space-y-2">
-                            <div class="flex items-center justify-between gap-2">
-                                <div class="flex items-center space-x-2 truncate">
-                                    <div class="w-4 h-4 rounded-full flex-shrink-0 border shadow-sm" style="background-color: ${colStyle.bg}; border-color: ${colStyle.border};"></div>
-                                    <div class="truncate">
-                                        <p class="font-bold text-slate-800 text-xs truncate">${plantData.name}</p>
-                                        <p class="text-[10px] text-slate-500">${plantData.type}</p>
-                                    </div>
-                                </div>
-                                <button onclick="removePlantFromZone('${zone.id}', '${plantInst.instanceId}')" class="text-slate-400 hover:text-red-600 p-1 transition flex-shrink-0" title="Verwijder plant uit vak">
-                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                                </button>
-                            </div>
-                            <div class="flex items-center space-x-2 pt-1 border-t border-slate-200/65 text-[11px]">
-                                <span class="text-slate-500 font-medium">Grootte:</span>
-                                <input type="range" min="14" max="70" step="2" value="${plantInst.size || 26}" 
-                                       oninput="updatePlantSize('${zone.id}', '${plantInst.instanceId}', this.value)"
-                                       class="flex-grow accent-botanic-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg">
-                                <span class="font-semibold text-slate-700 w-8 text-right">${plantInst.size || 26}px</span>
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            if (plantsContainer) plantsContainer.innerHTML = pHtml;
-            if (window.lucide) lucide.createIcons();
-        }
-
-        window.updatePlantSize = function(zoneId, instanceId, newSize) {
-            const zone = window.zones.find(z => z.id === zoneId);
-            if (zone) {
-                const p = zone.plants.find(x => x.instanceId === instanceId);
-                if (p) {
-                    p.size = parseInt(newSize) || 26;
-                    window.saveState();
-                    renderDesignerCanvas();
-                }
-            }
-        }
-
-        window.addSelectedPlantToActiveZone = function() {
-            if (!window.selectedZoneId) {
-                if (window.zones.length > 0) window.selectedZoneId = window.zones[0].id;
-                else return;
-            }
-            if (!window.selectedPlantCatalogId && window.allPlants.length > 0) {
-                window.selectedPlantCatalogId = window.allPlants[0].id;
-            }
-            if (!window.selectedPlantCatalogId) return;
-
-            const zone = window.zones.find(z => z.id === window.selectedZoneId);
-            const plantObj = window.allPlants.find(p => p.id === window.selectedPlantCatalogId);
-
-            if (zone && plantObj) {
-                zone.plants.push({
-                    instanceId: 'inst-' + Math.random().toString(36).substring(2, 9),
-                    plantId: plantObj.id,
-                    plantName: plantObj.name,
-                    x: Math.floor(Math.random() * (zone.w - 80)) + 40,
-                    y: Math.floor(Math.random() * (zone.h - 80)) + 40,
-                    size: 26
-                });
-                window.saveState();
-                renderDesignerCanvas();
-                renderZoneManagerPanel();
-            }
-        }
-
-        window.quickAddPlantToFirstZone = function(plantId) {
-            window.selectedPlantCatalogId = plantId;
-            if (!window.selectedZoneId && window.zones.length > 0) {
-                window.selectedZoneId = window.zones[0].id;
-            }
-            window.addSelectedPlantToActiveZone();
-        }
-
-        window.removePlantFromZone = function(zoneId, instanceId) {
-            const zone = window.zones.find(z => z.id === zoneId);
-            if (zone) {
-                zone.plants = zone.plants.filter(p => p.instanceId !== instanceId);
-                window.saveState();
-                renderDesignerCanvas();
-                renderZoneManagerPanel();
-            }
-        }
-
-        window.openPlantDetail = function(plantId, zoneId = null, instanceId = null) {
-            const plant = window.allPlants.find(p => p.id === plantId) || window.allPlants[0];
-            if (!plant) return;
-
-            if (zoneId) {
-                window.selectedZoneId = zoneId;
-                renderDesignerCanvas();
-                renderZoneManagerPanel();
-            }
-
-            document.getElementById('modal-plant-name').innerText = plant.name;
-            const contentEl = document.getElementById('modal-plant-content');
-            const sizeContainerEl = document.getElementById('modal-size-container');
-            
-            let rawHtml = '';
-            if (plant.raw) {
-                Object.keys(plant.raw).forEach(k => {
-                    if (plant.raw[k]) {
-                        rawHtml += `<div class="flex justify-between py-1 border-b border-slate-100"><span class="font-medium text-slate-500">${k}:</span><span class="text-slate-800 font-semibold text-right">${plant.raw[k]}</span></div>`;
-                    }
-                });
-            }
-
-            contentEl.innerHTML = `
-                <div class="space-y-2">
-                    <div class="bg-botanic-50 p-3 rounded-xl border border-botanic-100 space-y-1">
-                        <p class="text-[11px] text-botanic-800 font-semibold">Eigenschappen (Google Sheet)</p>
-                        <p class="text-xs text-slate-700"><strong>Type:</strong> ${plant.type}</p>
-                        <p class="text-xs text-slate-700"><strong>Kleur:</strong> <span class="capitalize">${plant.color}</span></p>
-                        <p class="text-xs text-slate-700"><strong>Standplaats:</strong> ${plant.light}</p>
-                        <p class="text-xs text-slate-700"><strong>Hoogte:</strong> ${plant.height}</p>
-                    </div>
-                    <div class="pt-2 space-y-1">
-                        <p class="text-[11px] font-semibold text-slate-600">Alle velden uit Google Sheet</p>
-                        ${rawHtml || '<p class="text-xs text-slate-400">Geen extra gegevens.</p>'}
-                    </div>
-                </div>
-            `;
-
-            if (zoneId && instanceId) {
-                window.activeModalPlantInstance = { zoneId, instanceId };
-                const zone = window.zones.find(z => z.id === zoneId);
-                const inst = zone?.plants.find(p => p.instanceId === instanceId);
-                const currentSize = inst ? (inst.size || 26) : 26;
-
-                sizeContainerEl.innerHTML = `
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-slate-600 font-medium">Grootte op kaart:</span>
-                        <span id="modal-size-val" class="font-semibold text-slate-700">${currentSize}px</span>
-                    </div>
-                    <input type="range" min="14" max="70" step="2" value="${currentSize}" 
-                           oninput="updateModalPlantSize('${zoneId}', '${instanceId}', this.value)"
-                           class="w-full accent-botanic-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg">
-                `;
-            } else {
-                window.activeModalPlantInstance = null;
-                sizeContainerEl.innerHTML = `<span class="text-slate-400 italic text-center">Selecteer plant op kaart om grootte aan te passen</span>`;
-            }
-
-            document.getElementById('plant-detail-modal').classList.remove('hidden');
-        }
-
-        window.updateModalPlantSize = function(zoneId, instanceId, newSize) {
-            const zone = window.zones.find(z => z.id === zoneId);
-            if (zone) {
-                const p = zone.plants.find(x => x.instanceId === instanceId);
-                if (p) {
-                    p.size = parseInt(newSize) || 26;
-                    const valSpan = document.getElementById('modal-size-val');
-                    if (valSpan) valSpan.innerText = p.size + 'px';
-                    window.saveState();
-                    renderDesignerCanvas();
-                    renderZoneManagerPanel();
-                }
-            }
-        }
-
-        window.closePlantDetail = function() {
-            document.getElementById('plant-detail-modal').classList.add('hidden');
-            window.activeModalPlantInstance = null;
-        }
-
-        window.handleModalBackdropClick = function(e) {
-            if (e.target.id === 'plant-detail-modal') {
-                closePlantDetail();
-            }
+            window.syncPlantsWithZones();
+            window.populateFilterDropdowns();
+            window.filterPlants();
+            window.renderDesignerCanvas();
         }
     </script>
 </body>
