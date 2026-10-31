@@ -53,6 +53,14 @@
             z-index: 40;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         }
+        /* Bij minimaliseren: verberg alle inhoud onder de header en pas hoogte aan */
+        .floating-panel.is-minimized {
+            height: auto !important;
+            min-height: 0 !important;
+        }
+        .floating-panel.is-minimized > *:not(.panel-header) {
+            display: none !important;
+        }
         .panel-resize-handle {
             position: absolute;
             right: 0;
@@ -145,8 +153,8 @@
         </div>
 
         <!-- FLOATING PANEL 1: Database & Invoerspoor -->
-        <div id="floating-filter-panel" class="floating-panel bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200 flex flex-col overflow-hidden"
-             style="left: 30px; top: 70px; width: 340px; height: 580px;"
+        <div id="floating-filter-panel" class="floating-panel bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200 flex flex-col overflow-hidden max-h-[calc(100vh-90px)]"
+             style="left: 30px; top: 45px; width: 340px; height: 580px;"
              onmousedown="event.stopPropagation()"
              onwheel="event.stopPropagation()">
             
@@ -173,10 +181,6 @@
                 <button id="tab-btn-reserve" onclick="window.switchPanelTab('reserve')" class="flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1">
                     <i data-lucide="bookmark" class="w-3.5 h-3.5"></i>
                     <span>Reservelijst</span>
-                </button>
-                <button id="tab-btn-form" onclick="window.switchPanelTab('form')" class="flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1">
-                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                    <span>Invoer</span>
                 </button>
             </div>
 
@@ -205,54 +209,65 @@
                         </button>
                     </div>
 
-                    <!-- Search Input -->
-                    <div class="relative">
-                        <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
-                        <input type="text" id="plant-search" oninput="window.filterPlants()" placeholder="Zoek op plantnaam, opmerking..." 
-                               class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-botanic-600/30">
-                    </div>
+                    <!-- Search Input & Inklapbare Filters Header -->
+                    <div class="space-y-2">
+                        <div class="flex items-center space-x-2">
+                            <div class="relative flex-grow">
+                                <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
+                                <input type="text" id="plant-search" oninput="window.filterPlants()" placeholder="Zoek op plantnaam, opmerking..." 
+                                       class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-botanic-600/30">
+                            </div>
+                            <button id="btn-toggle-filters" onclick="window.toggleFiltersCollapse()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition flex items-center space-x-1 border border-slate-200 flex-shrink-0" title="Filters in/uitklappen">
+                                <i id="filter-toggle-icon" data-lucide="filter" class="w-3.5 h-3.5 text-botanic-700"></i>
+                                <span id="filter-toggle-text">Filters</span>
+                                <i id="filter-chevron-icon" data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+                            </button>
+                        </div>
 
-                    <!-- Filters Grid (Uitgebreide opties) -->
-                    <div class="grid grid-cols-2 gap-2">
-                        <select id="filter-type" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                            <option value="">Alle typen</option>
-                        </select>
-                        <select id="filter-color" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                            <option value="">Alle kleuren</option>
-                        </select>
-                    </div>
+                        <!-- Filters Grid (Inklapbaar) -->
+                        <div id="filter-options-container" class="space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <select id="filter-type" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                                    <option value="">Alle typen</option>
+                                </select>
+                                <select id="filter-color" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                                    <option value="">Alle kleuren</option>
+                                </select>
+                            </div>
 
-                    <div class="grid grid-cols-2 gap-2">
-                        <select id="filter-light" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                            <option value="">Alle standplaatsen</option>
-                        </select>
-                        <select id="filter-owned" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                            <option value="">Heb ik? (Alle)</option>
-                            <option value="ja">Ja (In mijn tuin)</option>
-                            <option value="nee">Nee (In bezit=Nee)</option>
-                        </select>
-                    </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <select id="filter-light" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                                    <option value="">Alle standplaatsen</option>
+                                </select>
+                                <select id="filter-owned" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                                    <option value="">Heb ik? (Alle)</option>
+                                    <option value="ja">Ja (In mijn tuin)</option>
+                                    <option value="nee">Nee (In bezit=Nee)</option>
+                                </select>
+                            </div>
 
-                    <div class="grid grid-cols-2 gap-2">
-                        <select id="filter-nursery" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                            <option value="">Alle kwekers / shops</option>
-                        </select>
-                        <input type="text" id="filter-height" oninput="window.filterPlants()" placeholder="Filter op hoogte..." class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                    </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <select id="filter-nursery" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                                    <option value="">Alle kwekers / shops</option>
+                                </select>
+                                <input type="text" id="filter-height" oninput="window.filterPlants()" placeholder="Filter op hoogte..." class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                            </div>
 
-                    <div>
-                        <input type="text" id="filter-bloom" oninput="window.filterPlants()" placeholder="Filter op bloeitijd (bijv. Mei, Zomer)..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                    </div>
+                            <div>
+                                <input type="text" id="filter-bloom" oninput="window.filterPlants()" placeholder="Filter op bloeitijd (bijv. Mei, Zomer)..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
+                            </div>
 
-                    <div class="flex items-center justify-between pt-0.5">
-                        <button onclick="window.resetFilters()" class="text-[10px] text-slate-500 hover:text-slate-800 transition flex items-center space-x-1 px-1 py-0.5 rounded hover:bg-slate-100" title="Reset filters">
-                            <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
-                            <span>Filters resetten</span>
-                        </button>
-                        <button onclick="window.deleteAllPlants()" class="text-[10px] text-slate-400 hover:text-red-600 transition flex items-center space-x-1 px-1 py-0.5 rounded hover:bg-red-50" title="Alle planten wissen">
-                            <i data-lucide="trash-2" class="w-3 h-3"></i>
-                            <span>Alle planten wissen</span>
-                        </button>
+                            <div class="flex items-center justify-between pt-0.5">
+                                <button onclick="window.resetFilters()" class="text-[10px] text-slate-500 hover:text-slate-800 transition flex items-center space-x-1 px-1 py-0.5 rounded hover:bg-slate-100" title="Reset filters">
+                                    <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+                                    <span>Filters resetten</span>
+                                </button>
+                                <button onclick="window.deleteAllPlants()" class="text-[10px] text-slate-400 hover:text-red-600 transition flex items-center space-x-1 px-1 py-0.5 rounded hover:bg-red-50" title="Alle planten wissen">
+                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
+                                    <span>Alle planten wissen</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Plants List Container -->
@@ -284,119 +299,6 @@
                     </div>
                 </div>
 
-                <!-- TAB 3: INVOERSCHERM / PLANT TOEVOEGEN OF BEWERKEN -->
-                <div id="tab-content-form" class="flex-grow flex flex-col space-y-3 overflow-y-auto custom-scrollbar pr-2 max-h-[calc(100vh-220px)] hidden text-xs">
-                    <div class="bg-botanic-50 border border-botanic-100 p-2.5 rounded-xl text-slate-700 space-y-1">
-                        <p id="form-mode-title" class="font-bold text-botanic-800 text-xs">Nieuwe Plant Invoeren</p>
-                        <p class="text-[11px] text-slate-600">Voer plantgegevens in. Afbeeldingen worden automatisch van de web-link opgehaald.</p>
-                    </div>
-
-                    <input type="hidden" id="form-plant-id" value="">
-
-                    <div>
-                        <label class="block font-medium text-slate-700 mb-1">Plantnaam *</label>
-                        <input type="text" id="form-plant-name" placeholder="bijv. Tongvaren" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-botanic-600/30">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block font-medium text-slate-700 mb-1">Heb ik? *</label>
-                            <select id="form-plant-owned" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
-                                <option value="ja">Ja (In mijn tuin)</option>
-                                <option value="nee">Nee (Nog aan te schaffen)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block font-medium text-slate-700 mb-1">Aantal</label>
-                            <input type="number" id="form-plant-quantity" min="1" placeholder="1" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block font-medium text-slate-700 mb-1">Type / Categorie</label>
-                            <select id="form-plant-type" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
-                                <option value="Vaste plant">Vaste plant</option>
-                                <option value="Heester">Heester</option>
-                                <option value="Boom">Boom</option>
-                                <option value="Klimplant">Klimplant</option>
-                                <option value="Siergras">Siergras</option>
-                                <option value="Varen">Varen</option>
-                                <option value="Bolgewas">Bolgewas</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block font-medium text-slate-700 mb-1">Bloemkleur</label>
-                            <select id="form-plant-color" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none capitalize">
-                                <option value="groen">Groen</option>
-                                <option value="paars">Paars</option>
-                                <option value="roze">Roze</option>
-                                <option value="geel">Geel</option>
-                                <option value="wit">Wit</option>
-                                <option value="blauw">Blauw</option>
-                                <option value="rood">Rood</option>
-                                <option value="oranje">Oranje</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block font-medium text-slate-700 mb-1">Standplaats</label>
-                            <select id="form-plant-light" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
-                                <option value="Halfschaduw / Schaduw">Halfschaduw / Schaduw</option>
-                                <option value="Zon">Zon</option>
-                                <option value="Schaduw">Schaduw</option>
-                                <option value="Zon / Halfschaduw">Zon / Halfschaduw</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block font-medium text-slate-700 mb-1">Hoogte</label>
-                            <input type="text" id="form-plant-height" placeholder="bijv. 40-50cm" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block font-medium text-slate-700 mb-1">Bloeitijd</label>
-                        <input type="text" id="form-plant-bloom" placeholder="bijv. Mei - Juli" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block font-medium text-slate-700 mb-1">Tuinvak(ken)</label>
-                        <input type="text" id="form-plant-zones" placeholder="bijv. tongvaren, appel" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block font-medium text-slate-700 mb-1">Kweker / Waar te koop?</label>
-                        <input type="text" id="form-plant-nursery" placeholder="bijv. Natuurlijk Sterker, Directplant" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block font-medium text-slate-700 mb-1">Informatie / Web Link (URL)</label>
-                        <input type="url" id="form-plant-link" placeholder="https://..." class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block font-medium text-slate-700 mb-1">Eigen Afbeelding URL (Optioneel)</label>
-                        <input type="url" id="form-plant-custom-image" placeholder="Plak hier direct een foto URL..." class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none">
-                    </div>
-
-                    <div>
-                        <label class="block font-medium text-slate-700 mb-1">Opmerkingen / Notities</label>
-                        <textarea id="form-plant-notes" rows="2" placeholder="Bijv. kalkrijke grond gewenst, wintergroen..." class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none"></textarea>
-                    </div>
-
-                    <div class="pt-2 pb-4 flex items-center space-x-2">
-                        <button onclick="window.savePlantFromForm()" class="flex-1 py-2 bg-botanic-700 hover:bg-botanic-800 text-white font-medium rounded-xl transition flex items-center justify-center space-x-1 shadow-sm">
-                            <i data-lucide="check" class="w-3.5 h-3.5"></i>
-                            <span>Plant Opslaan</span>
-                        </button>
-                        <button onclick="window.clearPlantForm()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-xl transition">
-                            Reset
-                        </button>
-                    </div>
-                </div>
-
             </div>
 
             <!-- Resize Handle -->
@@ -405,7 +307,7 @@
 
         <!-- FLOATING PANEL 2: Bloeikalender -->
         <div id="floating-bloom-panel" class="floating-panel bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200 flex flex-col overflow-hidden"
-             style="left: 390px; top: 70px; width: 300px; height: auto;"
+             style="left: 390px; top: 45px; width: 300px; height: auto;"
              onmousedown="event.stopPropagation()"
              onwheel="event.stopPropagation()">
             
@@ -563,11 +465,7 @@
             measurementId: "G-GVBR3XRBWR"
         };
 
-        const DEFAULT_PLANTS = [
-            { id: 'plant-1', name: 'Tongvaren', type: 'Varen', color: 'groen', light: 'Halfschaduw / Schaduw', height: '30-40cm', bloom: 'Groen blijvend', zones: 'tongvaren, appel', owned: 'ja', quantity: '1', link: '', nursery: 'Natuurlijk Sterker', notes: '', image: '' },
-            { id: 'plant-2', name: 'Sierappel', type: 'Boom', color: 'roze', light: 'Zon / Halfschaduw', height: '3-4m', bloom: 'Mei', zones: 'appel', owned: 'ja', quantity: '1', link: '', nursery: '', notes: '', image: '' },
-            { id: 'plant-3', name: 'Zonnehoed', type: 'Vaste plant', color: 'paars', light: 'Zon', height: '70cm', bloom: 'Juli - Sept', zones: 'zonnehoek', owned: 'ja', quantity: '3', link: '', nursery: '', notes: '', image: '' }
-        ];
+        const DEFAULT_PLANTS = [];
 
         window.allPlants = [];
         window.zones = [];
@@ -579,9 +477,32 @@
         window.selectedZoneId = null;
         window.selectedPlantCatalogId = null;
         window.activeModalPlantInstance = null;
-        window.currentBloomMonthIndex = parseInt(localStorage.getItem('garden_bloom_month')) || 5;
-        window.isReadMode = localStorage.getItem('garden_is_read_mode') === 'true'; // Standaard uit localStorage laden (standaard true in HTML init)
-        
+        window.currentBloomMonthIndex = 5;
+        window.isReadMode = true; // Standaard in leesmodus
+        window.areFiltersCollapsed = false;
+
+        // --- Inklapbare Filters Toggle ---
+        window.toggleFiltersCollapse = function() {
+            window.areFiltersCollapsed = !window.areFiltersCollapsed;
+            const container = document.getElementById('filter-options-container');
+            const chevronIcon = document.getElementById('filter-chevron-icon');
+            const btn = document.getElementById('btn-toggle-filters');
+
+            if (container) {
+                if (window.areFiltersCollapsed) {
+                    container.classList.add('hidden');
+                    if (chevronIcon) chevronIcon.setAttribute('data-lucide', 'chevron-right');
+                    if (btn) btn.classList.add('bg-slate-200', 'border-slate-300');
+                } else {
+                    container.classList.remove('hidden');
+                    if (chevronIcon) chevronIcon.setAttribute('data-lucide', 'chevron-down');
+                    if (btn) btn.classList.remove('bg-slate-200', 'border-slate-300');
+                }
+            }
+            if (window.lucide) lucide.createIcons();
+            window.saveState();
+        };
+
         // --- Color & Image Helpers ---
         window.getPlantColorStyle = function(colorName) {
             const map = {
@@ -720,12 +641,6 @@
         };
 
         window.saveState = function() {
-            localStorage.setItem('garden_plants', JSON.stringify(window.allPlants));
-            localStorage.setItem('garden_zones', JSON.stringify(window.zones));
-            localStorage.setItem('garden_panels_layout', JSON.stringify(window.panelLayouts));
-            localStorage.setItem('garden_bloom_month', window.currentBloomMonthIndex);
-            localStorage.setItem('garden_is_read_mode', window.isReadMode);
-
             if (db && isCloudConnected) {
                 const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
                 setDoc(stateDocRef, {
@@ -734,6 +649,7 @@
                     panelLayouts: window.panelLayouts,
                     bloomMonth: window.currentBloomMonthIndex,
                     isReadMode: window.isReadMode,
+                    areFiltersCollapsed: window.areFiltersCollapsed,
                     updatedAt: new Date().toISOString()
                 }, { merge: true }).catch(err => {
                     console.warn("Cloud save warning:", err);
@@ -742,21 +658,103 @@
         };
 
         // --- Panel & View Helpers ---
+        window.clampPanelPositions = function() {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+
+            ['filter', 'bloom'].forEach(panelKey => {
+                const layout = window.panelLayouts[panelKey];
+                const panel = document.getElementById(panelKey === 'bloom' ? 'floating-bloom-panel' : 'floating-filter-panel');
+                if (!layout || !panel) return;
+
+                // Maximaal beschikbare afmetingen berekenen
+                const minW = 260;
+                const minH = panelKey === 'bloom' ? 180 : 250;
+
+                layout.w = Math.min(Math.max(minW, layout.w || 300), Math.max(minW, vw - 20));
+                
+                const maxAllowedH = Math.max(minH, vh - 20);
+                if (layout.h) {
+                    layout.h = Math.min(layout.h, maxAllowedH);
+                }
+
+                // Zorg dat de positie binnen het scherm valt (minstens 10px van de bovenkant)
+                const maxX = Math.max(10, vw - layout.w - 10);
+                const currentH = layout.minimized ? 45 : (layout.h || 580);
+                const maxY = Math.max(10, vh - currentH - 10);
+
+                layout.x = Math.max(10, Math.min(layout.x, maxX));
+                layout.y = Math.max(10, Math.min(layout.y, maxY));
+            });
+        };
+
         window.applyPanelPositions = function() {
+            window.clampPanelPositions();
+
             const filterPanel = document.getElementById('floating-filter-panel');
             if (filterPanel && window.panelLayouts.filter) {
                 filterPanel.style.left = `${window.panelLayouts.filter.x}px`;
                 filterPanel.style.top = `${window.panelLayouts.filter.y}px`;
                 filterPanel.style.width = `${window.panelLayouts.filter.w}px`;
-                filterPanel.style.height = `${window.panelLayouts.filter.h}px`;
+                
+                window.updatePanelMinimizeUI('filter');
             }
             const bloomPanel = document.getElementById('floating-bloom-panel');
             if (bloomPanel && window.panelLayouts.bloom) {
                 bloomPanel.style.left = `${window.panelLayouts.bloom.x}px`;
                 bloomPanel.style.top = `${window.panelLayouts.bloom.y}px`;
                 bloomPanel.style.width = `${window.panelLayouts.bloom.w}px`;
-                bloomPanel.style.height = `${window.panelLayouts.bloom.h}px`;
+                
+                window.updatePanelMinimizeUI('bloom');
             }
+        };
+
+        window.updatePanelMinimizeUI = function(panelKey) {
+            const panel = document.getElementById(panelKey === 'bloom' ? 'floating-bloom-panel' : 'floating-filter-panel');
+            if (!panel) return;
+
+            const isMinimized = !!(window.panelLayouts[panelKey] && window.panelLayouts[panelKey].minimized);
+            const btnIcon = panel.querySelector('.minimize-btn i');
+
+            if (isMinimized) {
+                panel.classList.add('is-minimized');
+                if (btnIcon) btnIcon.setAttribute('data-lucide', 'maximize-2');
+            } else {
+                panel.classList.remove('is-minimized');
+                
+                // Bij maximaliseren: bereken dynamisch de maximale beschikbare hoogte tot 10px vanaf het onder-scherm
+                const currentTop = panel.offsetTop || 10;
+                const maxAvailableH = Math.max(180, window.innerHeight - currentTop - 10);
+
+                if (panelKey === 'filter') {
+                    // Plantenpaneel strekt zich nu automatisch uit tot 10px van de onderkant
+                    panel.style.height = `${maxAvailableH}px`;
+                    if (window.panelLayouts.filter) {
+                        window.panelLayouts.filter.h = maxAvailableH;
+                    }
+                } else {
+                    const defaultH = 220;
+                    const savedH = (window.panelLayouts[panelKey] && window.panelLayouts[panelKey].h) || defaultH;
+                    panel.style.height = `${Math.min(savedH, maxAvailableH)}px`;
+                }
+
+                if (btnIcon) btnIcon.setAttribute('data-lucide', 'minimize-2');
+            }
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.togglePanelMinimize = function(panelKey, e) {
+            if (e) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            if (!window.panelLayouts[panelKey]) {
+                window.panelLayouts[panelKey] = { x: 30, y: 10, w: 340, h: 580, minimized: false };
+            }
+
+            window.panelLayouts[panelKey].minimized = !window.panelLayouts[panelKey].minimized;
+            window.updatePanelMinimizeUI(panelKey);
+            window.saveState();
         };
 
         window.updateCanvasTransform = function() {
@@ -794,7 +792,6 @@
 
         window.toggleAppMode = function() {
             window.isReadMode = !window.isReadMode;
-            localStorage.setItem('garden_is_read_mode', window.isReadMode);
             window.saveState();
             
             const modeText = document.getElementById('mode-text');
@@ -828,19 +825,15 @@
         window.switchPanelTab = function(tabName) {
             const tabCatalog = document.getElementById('tab-content-catalog');
             const tabReserve = document.getElementById('tab-content-reserve');
-            const tabForm = document.getElementById('tab-content-form');
             
             const btnCatalog = document.getElementById('tab-btn-catalog');
             const btnReserve = document.getElementById('tab-btn-reserve');
-            const btnForm = document.getElementById('tab-btn-form');
 
             if (tabCatalog) tabCatalog.classList.add('hidden');
             if (tabReserve) tabReserve.classList.add('hidden');
-            if (tabForm) tabForm.classList.add('hidden');
 
             if (btnCatalog) btnCatalog.className = 'flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1';
             if (btnReserve) btnReserve.className = 'flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1';
-            if (btnForm) btnForm.className = 'flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1';
 
             if (tabName === 'catalog') {
                 if (tabCatalog) tabCatalog.classList.remove('hidden');
@@ -850,9 +843,6 @@
                 if (tabReserve) tabReserve.classList.remove('hidden');
                 if (btnReserve) btnReserve.className = 'flex-1 py-2 border-b-2 border-amber-600 text-amber-700 bg-white transition flex items-center justify-center space-x-1';
                 window.renderReserveList();
-            } else if (tabName === 'form') {
-                if (tabForm) tabForm.classList.remove('hidden');
-                if (btnForm) btnForm.className = 'flex-1 py-2 border-b-2 border-botanic-700 text-botanic-700 bg-white transition flex items-center justify-center space-x-1';
             }
             if (window.lucide) lucide.createIcons();
         };
@@ -949,8 +939,15 @@
                 if (window.dragType === 'panel') {
                     const panel = document.getElementById(window.activePanelKey === 'bloom' ? 'floating-bloom-panel' : 'floating-filter-panel');
                     if (panel) {
-                        const newX = Math.max(10, e.clientX - window.dragOffsetX);
-                        const newY = Math.max(10, e.clientY - window.dragOffsetY);
+                        const panelW = window.panelLayouts[window.activePanelKey].w || 300;
+                        const panelH = panel.offsetHeight || 580;
+
+                        const maxX = Math.max(10, window.innerWidth - panelW - 10);
+                        const maxY = Math.max(10, window.innerHeight - panelH - 10);
+
+                        const newX = Math.max(10, Math.min(maxX, e.clientX - window.dragOffsetX));
+                        const newY = Math.max(10, Math.min(maxY, e.clientY - window.dragOffsetY));
+
                         panel.style.left = `${newX}px`;
                         panel.style.top = `${newY}px`;
                         if (!window.panelLayouts[window.activePanelKey]) window.panelLayouts[window.activePanelKey] = {};
@@ -967,8 +964,15 @@
                         
                         const curW = parseInt(panel.style.width) || 300;
                         const curH = parseInt(panel.style.height) || 220;
-                        const newW = Math.max(260, curW + deltaX);
-                        const newH = Math.max(180, curH + deltaY);
+
+                        const panelLeft = panel.offsetLeft || 30;
+                        const panelTop = panel.offsetTop || 70;
+
+                        const maxAllowedW = Math.max(260, window.innerWidth - panelLeft - 10);
+                        const maxAllowedH = Math.max(180, window.innerHeight - panelTop - 10);
+
+                        const newW = Math.min(maxAllowedW, Math.max(260, curW + deltaX));
+                        const newH = Math.min(maxAllowedH, Math.max(180, curH + deltaY));
                         
                         panel.style.width = `${newW}px`;
                         panel.style.height = `${newH}px`;
@@ -1269,7 +1273,8 @@
                 // Filter by selected zone on canvas if applicable
                 if (selectedZone) {
                     const plantZones = (p.zones || '').split(',').map(z => z.trim().toLowerCase());
-                    const matchesZone = plantZones.includes(selectedZone.name.toLowerCase());
+                    const targetZoneName = selectedZone.name.toLowerCase();
+                    const matchesZone = plantZones.some(z => z === targetZoneName || z.includes(targetZoneName) || targetZoneName.includes(z));
                     if (!matchesZone) return false;
                 }
 
@@ -1298,9 +1303,6 @@
 
                 const actionButtonsHtml = window.isReadMode ? '' : `
                     <div class="flex items-center space-x-1 flex-shrink-0" onmousedown="event.stopPropagation()">
-                        <button onclick="window.editPlantInForm('${plant.id}')" class="p-1 hover:bg-slate-100 rounded text-slate-600 hover:text-botanic-700 transition" title="Bewerken">
-                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                        </button>
                         <button onclick="window.deletePlantDefinition('${plant.id}')" class="p-1 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition" title="Verwijderen">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         </button>
@@ -1351,9 +1353,6 @@
 
                 const actionButtonsHtml = window.isReadMode ? '' : `
                     <div class="flex items-center space-x-1 flex-shrink-0" onmousedown="event.stopPropagation()">
-                        <button onclick="window.editPlantInForm('${plant.id}')" class="p-1 hover:bg-amber-100 rounded text-amber-800 transition" title="Bewerken / Toewijzen aan vak">
-                            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                        </button>
                         <button onclick="window.deletePlantDefinition('${plant.id}')" class="p-1 hover:bg-red-100 rounded text-red-500 hover:text-red-700 transition" title="Verwijderen">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         </button>
@@ -1393,12 +1392,13 @@
                 const zoneHeaderCursor = window.isReadMode ? 'cursor-pointer' : 'cursor-move hover:bg-slate-100';
 
                 html += `
-                    <div class="absolute rounded-2xl ${zone.color} ${borderClass} transition-shadow flex flex-col overflow-visible select-none"
-                         style="left: ${zone.x}px; top: ${zone.y}px; width: ${zone.w}px; height: ${zone.h}px;">
+                    <div class="garden-zone-box absolute rounded-2xl ${zone.color} ${borderClass} transition-shadow flex flex-col overflow-visible select-none cursor-pointer"
+                         data-zone-id="${zone.id}"
+                         style="left: ${zone.x}px; top: ${zone.y}px; width: ${zone.w}px; height: ${zone.h}px;"
+                         onmousedown="if(!event.target.closest('.plant-dot') && !event.target.closest('button')) window.selectZone('${zone.id}')">
                          
                         <div class="bg-white/95 backdrop-blur-sm px-3.5 py-2 border-b border-slate-200 flex items-center justify-between ${zoneHeaderCursor} transition z-20 rounded-t-2xl"
-                             ${window.isReadMode ? '' : `onmousedown="window.initZoneDrag(event, '${zone.id}')"`}
-                             onclick="window.selectZone('${zone.id}')">
+                             ${window.isReadMode ? `onclick="window.selectZone('${zone.id}')"` : `onmousedown="window.initZoneDrag(event, '${zone.id}')"`}>
                             <div class="flex items-center space-x-2 truncate pointer-events-none">
                                 <span class="font-bold text-slate-800 text-xs truncate">${zone.name}</span>
                                 <span class="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">${zone.plants.length}</span>
@@ -1408,7 +1408,7 @@
                             </button>
                         </div>
 
-                        <div class="relative flex-grow overflow-visible" onclick="window.selectZone('${zone.id}')">
+                        <div class="relative flex-grow overflow-visible" onclick="if(!event.target.closest('.plant-dot')) window.selectZone('${zone.id}')">
                 `;
 
                 zone.plants.forEach(plantInst => {
@@ -1501,13 +1501,6 @@
             const linkHtml = plant.link ? `<p class="text-xs text-slate-700"><strong>Link:</strong> <a href="${plant.link}" target="_blank" rel="noopener noreferrer" class="text-emerald-700 underline font-semibold hover:text-emerald-800 break-all">${plant.link}</a></p>` : '';
             const notesHtml = plant.notes ? `<p class="text-xs text-slate-700"><strong>Opmerkingen:</strong> ${plant.notes}</p>` : '';
 
-            const editButtonHtml = window.isReadMode ? '' : `
-                <button onclick="window.editPlantInForm('${plant.id}'); window.closePlantDetail();" class="w-full py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center justify-center space-x-1">
-                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                    <span>Bewerken in Invoerscherm</span>
-                </button>
-            `;
-
             contentEl.innerHTML = `
                 <div class="space-y-3">
                     <!-- Plant Afbeelding Card -->
@@ -1528,7 +1521,6 @@
                         ${linkHtml}
                         ${notesHtml}
                     </div>
-                    ${editButtonHtml}
                 </div>
             `;
 
@@ -1557,6 +1549,45 @@
                 modal.classList.remove('hidden');
             }
             if (window.lucide) lucide.createIcons();
+        };
+
+        // Modal Control Functions
+        window.closePlantDetail = function() {
+            const modal = document.getElementById('plant-detail-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+            window.activeModalPlantInstance = null;
+        };
+
+        window.handleModalBackdropClick = function(e) {
+            if (e.target.id === 'plant-detail-modal') {
+                window.closePlantDetail();
+            }
+        };
+
+        window.updateModalPlantSize = function(zoneId, instanceId, newSize) {
+            const sizeVal = document.getElementById('modal-size-val');
+            if (sizeVal) sizeVal.innerText = `${newSize}px`;
+
+            const zone = window.zones.find(z => z.id === zoneId);
+            const plantInst = zone?.plants.find(p => p.instanceId === instanceId);
+            if (plantInst) {
+                plantInst.size = parseInt(newSize, 10);
+                window.renderDesignerCanvas();
+                window.saveState();
+            }
+        };
+
+        window.openCsvImportModal = function() {
+            const modal = document.getElementById('csv-import-modal');
+            if (modal) modal.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.closeCsvImportModal = function() {
+            const modal = document.getElementById('csv-import-modal');
+            if (modal) modal.classList.add('hidden');
         };
 
         window.openNewPlantModal = function() {
@@ -1752,7 +1783,6 @@
 
         window.updateBloomMonth = function(monthIdx) {
             window.currentBloomMonthIndex = parseInt(monthIdx) || 5;
-            localStorage.setItem('garden_bloom_month', window.currentBloomMonthIndex);
             window.saveState();
             window.renderDesignerCanvas();
         };
@@ -1802,6 +1832,14 @@
             window.selectedZoneId = zoneId;
             window.renderDesignerCanvas();
             window.switchPanelTab('catalog');
+            
+            // Als de filters ingeklapt waren, klap ze tijdelijk uit om de zone-indicator goed te tonen
+            const filterContainer = document.getElementById('filter-options-container');
+            if (filterContainer && window.areFiltersCollapsed) {
+                window.areFiltersCollapsed = false;
+                filterContainer.classList.remove('hidden');
+            }
+
             window.filterPlants();
         };
 
@@ -1814,104 +1852,37 @@
         window.toggleAllZones = function() {
             const anyVisible = window.zones.some(z => z.visible);
             window.zones.forEach(z => z.visible = !anyVisible);
-            window.saveState();
             window.renderDesignerCanvas();
         };
 
-        window.toggleZoneVisibility = function(zoneId, e) {
-            e.stopPropagation();
-            const zone = window.zones.find(z => z.id === zoneId);
-            if (zone) {
-                zone.visible = !zone.visible;
-                window.saveState();
-                window.renderDesignerCanvas();
-            }
-        };
-
-        window.updateModalPlantSize = function(zoneId, instanceId, newSize) {
-            const zone = window.zones.find(z => z.id === zoneId);
-            if (zone) {
-                const p = zone.plants.find(x => x.instanceId === instanceId);
-                if (p) {
-                    p.size = parseInt(newSize) || 26;
-                    const valSpan = document.getElementById('modal-size-val');
-                    if (valSpan) valSpan.innerText = p.size + 'px';
-                    window.saveState();
-                    window.renderDesignerCanvas();
-                }
-            }
-        };
-
-        window.closePlantDetail = function() {
-            document.getElementById('plant-detail-modal').classList.add('hidden');
-            window.activeModalPlantInstance = null;
-        };
-
-        window.handleModalBackdropClick = function(e) {
-            if (e.target.id === 'plant-detail-modal') {
-                window.closePlantDetail();
-            }
-        };
-
-        // --- CSV Modal Handlers ---
-        window.openCsvImportModal = function() {
-            const modal = document.getElementById('csv-import-modal');
-            if (modal) modal.classList.remove('hidden');
-        };
-
-        window.closeCsvImportModal = function() {
-            const modal = document.getElementById('csv-import-modal');
-            if (modal) modal.classList.add('hidden');
-        };
-
-        // --- CSV Operations ---
         window.processRawCsvText = function(csvText) {
-            if (typeof Papa === 'undefined') {
-                return;
-            }
+            if (!csvText) return;
+            const parsed = Papa.parse(csvText, { skipEmptyLines: true });
+            if (!parsed.data || parsed.data.length < 2) return;
 
-            const rawParsed = Papa.parse(csvText, { skipEmptyLines: 'greedy' });
-            if (!rawParsed.data || rawParsed.data.length < 2) {
-                return;
-            }
+            const rows = parsed.data;
+            const header = rows[0].map(h => String(h).toLowerCase().trim());
 
-            const rawRows = rawParsed.data;
-            const headerRow = rawRows[0].map(h => String(h || '').trim().toLowerCase());
+            const nameIdx = header.findIndex(h => h.includes('naam') || h.includes('plant'));
+            const typeIdx = header.findIndex(h => h.includes('type') || h.includes('soort'));
+            const colorIdx = header.findIndex(h => h.includes('kleur'));
+            const lightIdx = header.findIndex(h => h.includes('standplaats') || h.includes('licht'));
+            const heightIdx = header.findIndex(h => h.includes('hoogte'));
+            const bloomIdx = header.findIndex(h => h.includes('bloei'));
+            const zoneIdx = header.findIndex(h => h.includes('vak') || h.includes('zone'));
+            const nurseryIdx = header.findIndex(h => h.includes('kweker') || h.includes('shop'));
+            const linkIdx = header.findIndex(h => h.includes('link') || h.includes('url'));
+            const imageIdx = header.findIndex(h => h.includes('foto') || h.includes('afbeelding') || h.includes('image'));
+            const notesIdx = header.findIndex(h => h.includes('opmerking') || h.includes('notitie'));
+            const quantityIdx = header.findIndex(h => h.includes('aantal'));
+            const ownedIdx = header.findIndex(h => h.includes('heb ik') || h.includes('bezit') || h.includes('gekocht'));
 
-            const findColIndex = (possibleNames) => {
-                for (let name of possibleNames) {
-                    const idx = headerRow.findIndex(h => h === name.toLowerCase());
-                    if (idx !== -1) return idx;
-                }
-                return -1;
-            };
-
-            const nameIdx = findColIndex(['plant', 'naam', 'plantnaam', 'name', 'titel', 'nederlandse naam', 'latijnse naam']);
-            const typeIdx = findColIndex(['type', 'categorie', 'category', 'soort']);
-            const colorIdx = findColIndex(['kleur', 'bloemkleur', 'color']);
-            const lightIdx = findColIndex(['standplaats', 'licht', 'zon', 'light']);
-            const heightIdx = findColIndex(['hoogte', 'height']);
-            const bloomIdx = findColIndex(['bloeiperiode', 'bloeitijd', 'bloei', 'bloom', 'bloeimaand', 'bloeimaanden', 'bloeien']);
-            const zoneIdx = findColIndex(['vak', 'vakken', 'zone', 'zones', 'tuinvak']);
-            const nurseryIdx = findColIndex(['kweker', 'kwekerij', 'winkel', 'waar te koop', 'verkooppunt', 'leverancier', 'shop']);
-            const linkIdx = findColIndex(['link', 'url', 'website', 'info', 'informatie', 'bron']);
-            const notesIdx = findColIndex(['opmerkingen', 'opmerking', 'notities', 'notes', 'beschrijving']);
-            const quantityIdx = findColIndex(['aantal', 'aantallen', 'qty', 'count', 'hoeveelheid']);
-            const ownedIdx = findColIndex(['heb ik?', 'heb ik', 'gekocht', 'in bezit', 'owned']);
-            const imageIdx = findColIndex(['afbeelding', 'foto', 'image', 'img', 'picture']);
-
-            const dataRows = rawRows.slice(1);
-
-            parsedCsvPlants = dataRows.map((rowArr, index) => {
-                const firstCell = rowArr[0] !== undefined && rowArr[0] !== null ? String(rowArr[0]).trim() : '';
+            parsedCsvPlants = rows.slice(1).map((rowArr, index) => {
+                if (!rowArr || rowArr.length === 0) return null;
+                const firstCell = String(rowArr[0] || '').trim();
                 if (!firstCell) return null;
 
-                const getVal = (idx, fallback = '') => {
-                    if (idx !== -1 && rowArr[idx] !== undefined && rowArr[idx] !== null) {
-                        return String(rowArr[idx]).trim();
-                    }
-                    return fallback;
-                };
+                const getVal = (idx, fallback = '') => (idx !== -1 && rowArr[idx] !== undefined && rowArr[idx] !== null) ? String(rowArr[idx]).trim() : fallback;
 
                 let plantLink = getVal(linkIdx, '');
                 if (!plantLink || !plantLink.startsWith('http')) {
@@ -1926,8 +1897,6 @@
                 }
 
                 const customImageFromCol = getVal(imageIdx, '');
-
-                // Kolom J = index 9 (0-indexed)
                 const nurseryFromColJ = rowArr[9] !== undefined && rowArr[9] !== null ? String(rowArr[9]).trim() : '';
 
                 const name = getVal(nameIdx) || firstCell;
@@ -1936,7 +1905,6 @@
                 const light = getVal(lightIdx, 'Halfschaduw / Schaduw');
                 const height = getVal(heightIdx, '');
                 
-                // Omzetten van maandnummers naar maandnamen
                 let rawBloom = getVal(bloomIdx, '');
                 const monthMap = {
                     '1': 'Januari', '2': 'Februari', '3': 'Maart', '4': 'April',
@@ -1999,7 +1967,6 @@
                     newPlantsCount++;
                     changeLogs.push(`✨ <strong>Nieuwe plant:</strong> ${newP.name}`);
                 } else {
-                    // Check specifieke eigenschapsveranderingen
                     let fieldChanges = [];
                     if ((existingP.color || '').toLowerCase() !== (newP.color || '').toLowerCase()) fieldChanges.push(`kleur (${existingP.color} ➔ ${newP.color})`);
                     if (existingP.bloom !== newP.bloom) fieldChanges.push(`bloeitijd (${existingP.bloom || 'geen'} ➔ ${newP.bloom})`);
@@ -2016,7 +1983,7 @@
                 }
             });
 
-            const countEl = document.getElementById('csv-preview-summary');
+            const summaryContainerEl = document.getElementById('csv-preview-summary');
             const previewCount = document.getElementById('csv-preview-count');
             const detailBox = document.getElementById('csv-changes-detail');
             const confirmBtn = document.getElementById('btn-confirm-import');
@@ -2037,7 +2004,7 @@
                 }
             }
 
-            if (countEl) countEl.classList.remove('hidden');
+            if (summaryContainerEl) summaryContainerEl.classList.remove('hidden');
             if (confirmBtn) confirmBtn.disabled = false;
         };
 
@@ -2180,12 +2147,6 @@
 
         // --- Export Function ---
         window.exportGardenStudio = function() {
-            // Sla huidige status op in localStorage zodat de export deze overneemt
-            localStorage.setItem('garden_plants', JSON.stringify(window.allPlants));
-            localStorage.setItem('garden_zones', JSON.stringify(window.zones));
-            localStorage.setItem('garden_panels_layout', JSON.stringify(window.panelLayouts));
-            localStorage.setItem('garden_bloom_month', window.currentBloomMonthIndex);
-
             // Haal de volledige HTML-broncode van de huidige pagina op
             const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
             const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
@@ -2205,126 +2166,124 @@
             window.applyPanelPositions();
             window.setupGlobalMouseEvents();
             window.updateCanvasTransform();
+
+            // Direct event delegation luisteraar voor alle kliks op tuinvakken
+            const canvasContainer = document.getElementById('canvas-content-container');
+            if (canvasContainer) {
+                canvasContainer.addEventListener('mousedown', (e) => {
+                    if (e.target.closest('.plant-dot') || e.target.closest('button')) return;
+                    const zoneBox = e.target.closest('.garden-zone-box');
+                    if (zoneBox) {
+                        const zoneId = zoneBox.getAttribute('data-zone-id');
+                        if (zoneId) {
+                            window.selectZone(zoneId);
+                        }
+                    }
+                });
+            }
+
+            // Herbereken paneelgrootte als het venster van formaat verandert
+            window.addEventListener('resize', () => {
+                window.applyPanelPositions();
+            });
             
-            // Initialiseer knop uiterlijk op basis van geladen leesmodus status
+            // Initialiseer knop uiterlijk direct voor leesmodus
+            window.isReadMode = true;
             const modeText = document.getElementById('mode-text');
             const modeIcon = document.getElementById('mode-icon');
             const modeToggleBtn = document.getElementById('btn-mode-toggle');
-            
-            if (window.isReadMode) {
-                if (modeText) modeText.innerText = 'Leesmodus';
-                if (modeIcon) {
-                    modeIcon.setAttribute('data-lucide', 'eye');
-                    modeIcon.style.color = '#348b5e';
-                }
-                if (modeToggleBtn) {
-                    modeToggleBtn.className = 'px-3 py-1.5 bg-botanic-50 hover:bg-botanic-100 text-botanic-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-botanic-200';
-                }
-            } else {
-                if (modeText) modeText.innerText = 'Bewerken';
-                if (modeIcon) {
-                    modeIcon.setAttribute('data-lucide', 'edit-3');
-                    modeIcon.style.color = '#286f4c';
-                }
-                if (modeToggleBtn) {
-                    modeToggleBtn.className = 'px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200';
-                }
+            if (modeText) modeText.innerText = 'Leesmodus';
+            if (modeIcon) {
+                modeIcon.setAttribute('data-lucide', 'eye');
+                modeIcon.style.color = '#348b5e';
+            }
+            if (modeToggleBtn) {
+                modeToggleBtn.className = 'px-3 py-1.5 bg-botanic-50 hover:bg-botanic-100 text-botanic-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-botanic-200';
             }
 
-            // Explicit Event Listeners for Undo / Redo buttons
+            // Keyboard Shortcuts voor Undo/Redo
+            window.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                    if (e.shiftKey) {
+                        e.preventDefault();
+                        window.redo();
+                    } else {
+                        e.preventDefault();
+                        window.undo();
+                    }
+                } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                    e.preventDefault();
+                    window.redo();
+                }
+            });
+
             const btnUndo = document.getElementById('btn-undo');
             const btnRedo = document.getElementById('btn-redo');
-            if (btnUndo) btnUndo.addEventListener('click', (e) => { e.preventDefault(); window.undo(); });
-            if (btnRedo) btnRedo.addEventListener('click', (e) => { e.preventDefault(); window.redo(); });
+            if (btnUndo) btnUndo.addEventListener('click', () => window.undo());
+            if (btnRedo) btnRedo.addEventListener('click', () => window.redo());
 
-            window.updateUndoRedoUI();
-            if (window.lucide) lucide.createIcons();
-
+            // Firebase Initialization
             try {
                 const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
                 auth = getAuth(app);
-                
+                db = getFirestore(app);
+
                 await signInAnonymously(auth);
                 isCloudConnected = true;
+                window.updateCloudStatus('synced', 'Verbonden');
 
                 const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
-                
                 onSnapshot(stateDocRef, (docSnap) => {
                     if (docSnap.exists()) {
                         const data = docSnap.data();
-                        if (data.panelLayouts) {
-                            window.panelLayouts = data.panelLayouts;
-                            window.applyPanelPositions();
-                        }
-                        if (data.bloomMonth) {
-                            window.currentBloomMonthIndex = parseInt(data.bloomMonth) || 5;
-                            localStorage.setItem('garden_bloom_month', window.currentBloomMonthIndex);
-                        }
-                        if (data.isReadMode !== undefined) {
-                            window.isReadMode = data.isReadMode;
-                            localStorage.setItem('garden_is_read_mode', window.isReadMode);
-                            
-                            // Update knop uiterlijk direct
-                            if (modeText) modeText.innerText = window.isReadMode ? 'Leesmodus' : 'Bewerken';
-                            if (modeIcon) {
-                                modeIcon.setAttribute('data-lucide', window.isReadMode ? 'eye' : 'edit-3');
-                                modeIcon.style.color = window.isReadMode ? '#348b5e' : '#286f4c';
+                        window.allPlants = data.allPlants || [];
+                        window.zones = data.zones || [];
+                        if (data.panelLayouts) window.panelLayouts = data.panelLayouts;
+                        if (data.bloomMonth !== undefined) window.currentBloomMonthIndex = data.bloomMonth;
+                        if (data.isReadMode !== undefined) window.isReadMode = data.isReadMode;
+                        if (data.areFiltersCollapsed !== undefined) window.areFiltersCollapsed = data.areFiltersCollapsed;
+
+                        window.applyPanelPositions();
+                        window.syncPlantsWithZones();
+                        window.populateFilterDropdowns();
+                        
+                        // Herstel inklapbare filters UI status
+                        const filterContainer = document.getElementById('filter-options-container');
+                        const filterChevronIcon = document.getElementById('filter-chevron-icon');
+                        if (filterContainer) {
+                            if (window.areFiltersCollapsed) {
+                                filterContainer.classList.add('hidden');
+                                if (filterChevronIcon) filterChevronIcon.setAttribute('data-lucide', 'chevron-right');
+                            } else {
+                                filterContainer.classList.remove('hidden');
+                                if (filterChevronIcon) filterChevronIcon.setAttribute('data-lucide', 'chevron-down');
                             }
-                            if (modeToggleBtn) {
-                                modeToggleBtn.className = window.isReadMode 
-                                    ? 'px-3 py-1.5 bg-botanic-50 hover:bg-botanic-100 text-botanic-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-botanic-200'
-                                    : 'px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200';
-                            }
                         }
-                        window.allPlants = Array.isArray(data.allPlants) ? data.allPlants : DEFAULT_PLANTS;
-                        window.zones = Array.isArray(data.zones) ? data.zones : [];
+
+                        window.filterPlants();
+                        window.renderReserveList();
+                        window.renderDesignerCanvas();
                     } else {
-                        window.allPlants = DEFAULT_PLANTS;
+                        // Geen data in cloud: start met een schone lege staat
+                        window.allPlants = [];
+                        window.zones = [];
                         window.saveState();
+                        window.populateFilterDropdowns();
+                        window.filterPlants();
+                        window.renderReserveList();
+                        window.renderDesignerCanvas();
                     }
-
-                    window.syncPlantsWithZones();
-                    window.populateFilterDropdowns();
-                    window.filterPlants();
-                    window.renderDesignerCanvas();
-                    window.updateCloudStatus('synced', 'Verbonden');
                 }, (error) => {
-                    console.warn("Firestore listener warning:", error);
-                    window.updateCloudStatus('local', 'Lokaal');
-                    fallbackToLocalStorage();
+                    console.warn("Firestore luisteraar waarschuwing:", error);
+                    window.updateCloudStatus('error', 'Lokaal');
                 });
-
             } catch (e) {
-                console.warn("Cloud init error, falling back to localStorage", e);
-                window.updateCloudStatus('local', 'Lokaal');
-                fallbackToLocalStorage();
+                console.warn("Firebase initialisatie mislukt:", e);
+                window.updateCloudStatus('error', 'Lokaal');
             }
+
+            if (window.lucide) lucide.createIcons();
         });
-
-        function fallbackToLocalStorage() {
-            const localPlants = JSON.parse(localStorage.getItem('garden_plants'));
-            window.allPlants = Array.isArray(localPlants) ? localPlants : DEFAULT_PLANTS;
-
-            const localZones = JSON.parse(localStorage.getItem('garden_zones'));
-            if (localZones) window.zones = localZones;
-
-            const localPanels = JSON.parse(localStorage.getItem('garden_panels_layout'));
-            if (localPanels) {
-                window.panelLayouts = localPanels;
-                window.applyPanelPositions();
-            }
-
-            const localReadMode = localStorage.getItem('garden_is_read_mode');
-            if (localReadMode !== null) {
-                window.isReadMode = localReadMode === 'true';
-            }
-
-            window.syncPlantsWithZones();
-            window.populateFilterDropdowns();
-            window.filterPlants();
-            window.renderDesignerCanvas();
-        }
     </script>
 </body>
 </html>
