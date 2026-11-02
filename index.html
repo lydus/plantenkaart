@@ -333,15 +333,15 @@
     </div>
 
     <!-- Plant Detail Modal -->
-    <div id="plant-detail-modal" class="fixed inset-0 bg-slate-900/10 backdrop-blur-[1px] z-50 hidden flex items-center justify-end p-6" onclick="window.handleModalBackdropClick(event)">
-        <div id="plant-detail-dialog" class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200 flex flex-col h-[85vh]">
+    <div id="plant-detail-modal" class="fixed inset-0 bg-slate-900/10 backdrop-blur-[1px] z-50 hidden flex items-center justify-center p-4" onclick="window.handleModalBackdropClick(event)">
+        <div id="plant-detail-dialog" class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200 flex flex-col h-auto max-h-[85vh]">
             <div class="bg-botanic-700 text-white px-5 py-3.5 flex items-center justify-between flex-shrink-0">
                 <h3 id="modal-plant-name" class="font-bold text-sm">Plant Informatie</h3>
                 <button onclick="window.closePlantDetail()" class="text-white/80 hover:text-white p-1 rounded-lg transition">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
-            <div id="modal-plant-content" class="p-5 space-y-4 flex-grow overflow-y-auto custom-scrollbar text-xs">
+            <div id="modal-plant-content" class="p-5 space-y-4 overflow-y-auto custom-scrollbar text-xs">
                 <!-- Dynamic Content -->
             </div>
             <div class="bg-slate-50 px-5 py-4 border-t border-slate-200 flex flex-col space-y-3 flex-shrink-0">
