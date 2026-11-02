@@ -866,7 +866,7 @@
                         if (!isInteractiveElement) {
                             window.isPanning = true;
                             window.startPanX = e.touches[0].clientX - window.panX;
-                            window.startPanY = e.touches[0].clientY - window.startPanY;
+                            window.startPanY = e.touches[0].clientY - window.panY;
                         }
                     }
                 }, { passive: false });
