@@ -843,11 +843,15 @@
                         );
                         initialPinchDistance = dist;
                         initialPinchScale = window.scale;
-                    } else if (e.touches.length === 1 && !e.target.closest('.sidebar-panel') && !e.target.closest('.plant-dot') && !e.target.closest('header') && !e.target.closest('.garden-zone-box')) {
-                        // Één vinger op achtergrond: start pannen
-                        window.isPanning = true;
-                        window.startPanX = e.touches[0].clientX - window.panX;
-                        window.startPanY = e.touches[0].clientY - window.panY;
+                    } else if (e.touches.length === 1 && !e.target.closest('.sidebar-panel') && !e.target.closest('header')) {
+                        // Één vinger: uitzondering voor plant-dots en de resize-handle of titelbalk tijdens bewerken
+                        const isInteractiveElement = e.target.closest('.plant-dot') || e.target.closest('.zone-resize-handle') || (!window.isReadMode && e.target.closest('.garden-zone-box .bg-white\\/95'));
+                        
+                        if (!isInteractiveElement) {
+                            window.isPanning = true;
+                            window.startPanX = e.touches[0].clientX - window.panX;
+                            window.startPanY = e.touches[0].clientY - window.startPanY;
+                        }
                     }
                 }, { passive: false });
 
