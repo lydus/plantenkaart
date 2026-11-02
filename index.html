@@ -48,38 +48,48 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: rgba(0, 0, 0, 0.3);
         }
-        .floating-panel {
+        
+        /* Zijbalk Paneel Stijlen */
+        .sidebar-panel {
             position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 10px;
             z-index: 40;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 4px 0 25px -5px rgba(0, 0, 0, 0.1), 2px 0 10px -6px rgba(0, 0, 0, 0.1);
         }
-        /* Bij minimaliseren: verberg alle inhoud onder de header en pas hoogte aan */
-        .floating-panel.is-minimized {
-            height: auto !important;
-            min-height: 0 !important;
+        /* Ingeklapte staat: schuift grotendeels van het scherm af */
+        .sidebar-panel.is-collapsed {
+            transform: translateX(-100%);
         }
-        .floating-panel.is-minimized > *:not(.panel-header) {
-            display: none !important;
-        }
-        .panel-resize-handle {
-            position: absolute;
-            right: 0;
-            bottom: 0;
-            width: 14px;
-            height: 14px;
-            cursor: se-resize;
-        }
+
+        /* Resize Handle op de hoek van de vakken */
         .zone-resize-handle {
             position: absolute;
-            right: 0;
-            bottom: 0;
-            width: 16px;
-            height: 16px;
+            right: -6px;
+            bottom: -6px;
+            width: 18px;
+            height: 18px;
+            background-color: #348b5e;
+            border: 1.5px solid #ffffff;
+            border-radius: 5px;
             cursor: se-resize;
-            border-right: 3px solid rgba(0,0,0,0.2);
-            border-bottom: 3px solid rgba(0,0,0,0.2);
-            border-bottom-right-radius: 8px;
+            z-index: 30;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+            transition: transform 0.15s ease, background-color 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            opacity: 0.85;
         }
+        .zone-resize-handle:hover {
+            transform: scale(1.15);
+            background-color: #286f4c;
+            opacity: 1;
+        }
+        
         /* Subtiel rasterpatroon voor de achtergrond van de tuinkaart */
         #canvas-viewport {
             background-color: #f8fafc;
@@ -94,15 +104,42 @@
 <body class="h-full flex flex-col overflow-hidden text-slate-800 antialiased select-none">
 
     <!-- Top Navigation Header -->
-    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 flex items-center justify-between z-30 shadow-sm flex-shrink-0">
+    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2 flex items-center justify-between z-30 shadow-sm flex-shrink-0">
         <div class="flex items-center space-x-3">
+            <!-- Toggle Sidebar Button in Header -->
+            <button onclick="window.toggleSidebar()" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition border border-slate-200" title="Klap plantenpaneel in/uit">
+                <i id="header-sidebar-icon" data-lucide="panel-left-close" class="w-4 h-4 text-botanic-700"></i>
+            </button>
             <div class="w-8 h-8 rounded-xl bg-botanic-700 text-white flex items-center justify-center shadow-md shadow-botanic-700/20">
                 <i data-lucide="sprout" class="w-5 h-5"></i>
             </div>
-            <div>
+            <div class="hidden sm:block">
                 <h1 class="font-bold text-slate-800 text-sm leading-tight">Tuinbeplantingsplan Studio</h1>
                 <p class="text-[11px] text-slate-500">Ontwerp & Beplantingsbeheer</p>
             </div>
+        </div>
+
+        <!-- Integrated Bloom Calendar Controls (Center Header) -->
+        <div class="flex items-center space-x-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-inner my-0.5">
+            <div class="flex items-center space-x-1.5 flex-shrink-0">
+                <i data-lucide="flower-2" class="w-4 h-4 text-botanic-700"></i>
+                <span id="bloom-month-label" class="font-bold text-botanic-800 text-xs w-16">Mei</span>
+            </div>
+            
+            <div class="flex flex-col w-36 sm:w-48">
+                <input type="range" id="bloom-month-slider" min="1" max="12" value="5" step="1"
+                       oninput="window.updateBloomMonth(this.value)"
+                       class="w-full accent-botanic-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg">
+                <div class="flex justify-between text-[9px] text-slate-400 font-medium px-0.5 mt-0.5">
+                    <span>Jan</span>
+                    <span>Apr</span>
+                    <span>Jul</span>
+                    <span>Okt</span>
+                    <span>Dec</span>
+                </div>
+            </div>
+
+            <span id="bloom-count-badge" class="bg-botanic-100 text-botanic-800 font-bold px-2 py-0.5 rounded-full text-[11px] flex-shrink-0 whitespace-nowrap">0 in bloei</span>
         </div>
 
         <div class="flex items-center space-x-2">
@@ -131,11 +168,11 @@
 
             <button onclick="window.resetCanvasView()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5" title="Centreer kaart">
                 <i data-lucide="compass" class="w-3.5 h-3.5"></i>
-                <span>Centreer</span>
+                <span class="hidden md:inline">Centreer</span>
             </button>
             <button onclick="window.exportGardenStudio()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center space-x-1.5 shadow-sm" title="Exporteer als zelfstandig HTML-bestand">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                <span>Exporteer Tuinbestand</span>
+                <span class="hidden md:inline">Exporteer Tuinbestand</span>
             </button>
         </div>
     </header>
@@ -152,201 +189,144 @@
             <div id="canvas-content-container" class="absolute inset-0 pointer-events-auto"></div>
         </div>
 
-        <!-- FLOATING PANEL 1: Database & Invoerspoor -->
-        <div id="floating-filter-panel" class="floating-panel bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200 flex flex-col overflow-hidden max-h-[calc(100vh-90px)]"
-             style="left: 30px; top: 45px; width: 340px; height: 580px;"
+        <!-- SIDEBAR PANEL: Database & Invoerspoor -->
+        <div id="floating-filter-panel" class="sidebar-panel bg-white/95 backdrop-blur-md border-r border-b border-slate-200 flex flex-col overflow-visible rounded-r-2xl m-2 my-2 w-[350px] max-w-[calc(100vw-40px)]"
              onmousedown="event.stopPropagation()"
              onwheel="event.stopPropagation()">
             
-            <!-- Panel Header (Draggable) -->
-            <div class="panel-header bg-slate-100/90 border-b border-slate-200 px-3.5 py-2.5 flex items-center justify-between cursor-move flex-shrink-0"
-                 onmousedown="window.initPanelDrag(event, 'filter')">
+            <!-- In/Uitklap Tab op de rand van de Zijbalk -->
+            <button id="sidebar-edge-toggle" onclick="window.toggleSidebar()" 
+                    class="absolute -right-9 top-3 bg-white border border-l-0 border-slate-200 text-slate-600 hover:text-botanic-700 p-2 rounded-r-xl shadow-md transition hover:bg-slate-50"
+                    title="Klap zijbalk in/uit">
+                <i id="edge-toggle-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Panel Header -->
+            <div class="panel-header bg-slate-100/90 border-b border-slate-200 px-3.5 py-2.5 flex items-center justify-between flex-shrink-0 rounded-tr-2xl">
                 <div class="flex items-center space-x-2">
                     <i data-lucide="database" class="w-4 h-4 text-botanic-700"></i>
                     <span class="font-bold text-slate-800 text-xs">Plantendatabase & Invoer</span>
                 </div>
-                <div class="flex items-center space-x-1">
-                    <button onclick="window.togglePanelMinimize('filter', event)" class="p-1 hover:bg-slate-200 rounded text-slate-500 transition minimize-btn" title="Minimizeren">
-                        <i data-lucide="minimize-2" class="w-3.5 h-3.5"></i>
-                    </button>
-                </div>
             </div>
 
-            <!-- Panel Navigation Tabs -->
+            <!-- TAB MENU (Overzicht vs Reservelijst) -->
             <div class="flex border-b border-slate-200 text-xs font-semibold bg-slate-50 flex-shrink-0">
                 <button id="tab-btn-catalog" onclick="window.switchPanelTab('catalog')" class="flex-1 py-2 border-b-2 border-botanic-700 text-botanic-700 bg-white transition flex items-center justify-center space-x-1">
-                    <i data-lucide="list" class="w-3.5 h-3.5"></i>
+                    <i data-lucide="list-filter" class="w-3.5 h-3.5"></i>
                     <span>Overzicht</span>
                 </button>
                 <button id="tab-btn-reserve" onclick="window.switchPanelTab('reserve')" class="flex-1 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center space-x-1">
-                    <i data-lucide="bookmark" class="w-3.5 h-3.5"></i>
+                    <i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>
                     <span>Reservelijst</span>
+                    <span id="reserve-count-badge" class="bg-amber-100 text-amber-800 rounded-full px-1.5 py-0.2 text-[10px]">0</span>
                 </button>
             </div>
 
-            <!-- Panel Body Content -->
-            <div class="panel-body-content flex-grow flex flex-col overflow-hidden p-3.5 space-y-3">
+            <!-- TAB CONTENT 1: Planten Catalogus & Filters -->
+            <div id="tab-content-catalog" class="flex flex-col flex-grow overflow-hidden p-3 space-y-2.5">
                 
-                <!-- TAB 1: CATALOG OVERVIEW -->
-                <div id="tab-content-catalog" class="flex-grow flex flex-col space-y-3 overflow-hidden">
-                    <div class="flex items-center justify-between">
-                        <div id="sheet-status" class="text-[11px] text-slate-500 font-medium">Resultaten: 0 planten</div>
-                        <button onclick="window.openCsvImportModal()" class="text-[11px] text-emerald-700 font-semibold hover:underline flex items-center space-x-1">
-                            <i data-lucide="upload" class="w-3 h-3"></i>
-                            <span>Upload/Link CSV</span>
-                        </button>
+                <!-- Actief Vak Filter Banner -->
+                <div id="active-zone-filter-banner" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1.5 rounded-xl flex items-center justify-between text-xs flex-shrink-0 shadow-sm">
+                    <div class="flex items-center space-x-1.5 truncate">
+                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"></i>
+                        <span id="active-zone-filter-name" class="font-bold truncate">Vak: -</span>
                     </div>
-                    
-                    <!-- Active Zone Filter Indicator -->
-                    <div id="active-zone-filter-banner" class="hidden bg-botanic-100/80 border border-botanic-300 rounded-lg px-2.5 py-1.5 flex items-center justify-between text-xs text-botanic-800 font-semibold">
-                        <div class="flex items-center space-x-1.5 truncate">
-                            <i data-lucide="map-pin" class="w-3.5 h-3.5 flex-shrink-0 text-botanic-700"></i>
-                            <span id="active-zone-filter-name" class="truncate">Geselecteerd vak: ...</span>
-                        </div>
-                        <button onclick="window.clearSelectedZoneFilter()" class="text-[10px] bg-white/80 hover:bg-white text-botanic-800 px-1.5 py-0.5 rounded border border-botanic-300 transition flex items-center space-x-0.5 flex-shrink-0">
-                            <i data-lucide="x" class="w-3 h-3"></i>
-                            <span>Toon alles</span>
-                        </button>
+                    <button onclick="window.clearSelectedZoneFilter()" class="text-emerald-700 hover:text-emerald-900 font-medium text-[11px] underline flex-shrink-0 ml-1">
+                        Toon alles
+                    </button>
+                </div>
+
+                <!-- Zoekbalk & Inklap-knoppen -->
+                <div class="space-y-1.5 flex-shrink-0">
+                    <div class="relative">
+                        <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400"></i>
+                        <input type="text" id="plant-search" oninput="window.filterPlants()" placeholder="Zoek op plantnaam, type of kweker..."
+                               class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-botanic-600 focus:bg-white transition">
                     </div>
 
-                    <!-- Search Input & Inklapbare Filters Header -->
-                    <div class="space-y-2">
-                        <div class="flex items-center space-x-2">
-                            <div class="relative flex-grow">
-                                <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
-                                <input type="text" id="plant-search" oninput="window.filterPlants()" placeholder="Zoek op plantnaam, opmerking..." 
-                                       class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-botanic-600/30">
-                            </div>
-                            <button id="btn-toggle-filters" onclick="window.toggleFiltersCollapse()" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition flex items-center space-x-1 border border-slate-200 flex-shrink-0" title="Filters in/uitklappen">
-                                <i id="filter-toggle-icon" data-lucide="filter" class="w-3.5 h-3.5 text-botanic-700"></i>
-                                <span id="filter-toggle-text">Filters</span>
-                                <i id="filter-chevron-icon" data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+                    <div class="flex items-center justify-between space-x-1">
+                        <button id="btn-toggle-filters" onclick="window.toggleFiltersCollapse()" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-lg text-[11px] font-medium transition flex items-center space-x-1">
+                            <i id="filter-chevron-icon" data-lucide="chevron-down" class="w-3 h-3 text-slate-500"></i>
+                            <span>Filters</span>
+                        </button>
+                        <div class="flex items-center space-x-1">
+                            <button onclick="window.openCsvImportModal()" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-medium transition flex items-center space-x-1">
+                                <i data-lucide="file-spread-sheet" class="w-3 h-3 text-emerald-700"></i>
+                                <span>Sheet</span>
+                            </button>
+                            <button onclick="window.resetFilters()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[11px] font-medium transition">
+                                Reset
                             </button>
                         </div>
-
-                        <!-- Filters Grid (Inklapbaar) -->
-                        <div id="filter-options-container" class="space-y-2">
-                            <div class="grid grid-cols-2 gap-2">
-                                <select id="filter-type" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                                    <option value="">Alle typen</option>
-                                </select>
-                                <select id="filter-color" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                                    <option value="">Alle kleuren</option>
-                                </select>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-2">
-                                <select id="filter-light" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                                    <option value="">Alle standplaatsen</option>
-                                </select>
-                                <select id="filter-owned" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                                    <option value="">Heb ik? (Alle)</option>
-                                    <option value="ja">Ja (In mijn tuin)</option>
-                                    <option value="nee">Nee (In bezit=Nee)</option>
-                                </select>
-                            </div>
-
-                            <div class="grid grid-cols-2 gap-2">
-                                <select id="filter-nursery" onchange="window.filterPlants()" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                                    <option value="">Alle kwekers / shops</option>
-                                </select>
-                                <input type="text" id="filter-height" oninput="window.filterPlants()" placeholder="Filter op hoogte..." class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                            </div>
-
-                            <div>
-                                <input type="text" id="filter-bloom" oninput="window.filterPlants()" placeholder="Filter op bloeitijd (bijv. Mei, Zomer)..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-700 focus:outline-none">
-                            </div>
-
-                            <div class="flex items-center justify-between pt-0.5">
-                                <button onclick="window.resetFilters()" class="text-[10px] text-slate-500 hover:text-slate-800 transition flex items-center space-x-1 px-1 py-0.5 rounded hover:bg-slate-100" title="Reset filters">
-                                    <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
-                                    <span>Filters resetten</span>
-                                </button>
-                                <button onclick="window.deleteAllPlants()" class="text-[10px] text-slate-400 hover:text-red-600 transition flex items-center space-x-1 px-1 py-0.5 rounded hover:bg-red-50" title="Alle planten wissen">
-                                    <i data-lucide="trash-2" class="w-3 h-3"></i>
-                                    <span>Alle planten wissen</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Plants List Container -->
-                    <div id="plant-catalog-list" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                        <!-- Dynamic Items -->
                     </div>
                 </div>
 
-                <!-- TAB 2: RESERVELIJSCH / NOG AAN TE SCHAFFEN -->
-                <div id="tab-content-reserve" class="flex-grow flex flex-col space-y-3 overflow-hidden hidden">
-                    <div class="bg-amber-50/80 border border-amber-200 p-2.5 rounded-xl text-amber-900 flex items-center justify-between">
-                        <div>
-                            <p class="font-bold text-xs">Nog aan te schaffen</p>
-                            <p class="text-[10px] text-amber-800">Planten met "nee" bij "heb ik?" of vak "Reservelijst".</p>
-                        </div>
-                        <span id="reserve-count-badge" class="bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full text-xs">0</span>
-                    </div>
-
-                    <!-- Search Reserve List -->
-                    <div class="relative">
-                        <i data-lucide="search" class="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
-                        <input type="text" id="reserve-search" oninput="window.renderReserveList()" placeholder="Zoek in reservelijst..." 
-                               class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30">
-                    </div>
-
-                    <!-- Reserve List Container -->
-                    <div id="reserve-catalog-list" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                        <!-- Dynamic Items -->
-                    </div>
+                <!-- Inklapbare Uitgebreide Filters -->
+                <div id="filter-options-container" class="grid grid-cols-2 gap-1.5 text-xs bg-slate-50 p-2 rounded-xl border border-slate-200 flex-shrink-0">
+                    <select id="filter-type" onchange="window.filterPlants()" class="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px]">
+                        <option value="">Alle typen</option>
+                    </select>
+                    <select id="filter-color" onchange="window.filterPlants()" class="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px]">
+                        <option value="">Alle kleuren</option>
+                    </select>
+                    <select id="filter-light" onchange="window.filterPlants()" class="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px]">
+                        <option value="">Alle standplaatsen</option>
+                    </select>
+                    <select id="filter-owned" onchange="window.filterPlants()" class="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px]">
+                        <option value="">Alle statussen</option>
+                        <option value="ja">In mijn tuin (Ja)</option>
+                        <option value="nee">Nog te kopen (Nee)</option>
+                    </select>
+                    <select id="filter-nursery" onchange="window.filterPlants()" class="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-[11px] col-span-2">
+                        <option value="">Alle kwekers / shops</option>
+                    </select>
                 </div>
 
+                <!-- Status Header -->
+                <div class="flex items-center justify-between text-[11px] text-slate-500 font-medium px-0.5 flex-shrink-0">
+                    <span id="sheet-status">Planten laden...</span>
+                </div>
+
+                <!-- Dynamic Plant List Container -->
+                <div id="plant-catalog-list" class="flex-grow overflow-y-auto custom-scrollbar space-y-1.5 pr-0.5">
+                    <!-- Dynamic Plant Items -->
+                </div>
             </div>
 
-            <!-- Resize Handle -->
-            <div class="panel-resize-handle" onmousedown="window.initPanelResize(event, 'filter')"></div>
+            <!-- TAB CONTENT 2: Reservelijst (Nog te kopen planten) -->
+            <div id="tab-content-reserve" class="hidden flex flex-col flex-grow overflow-hidden p-3 space-y-2.5">
+                <div class="relative flex-shrink-0">
+                    <i data-lucide="search" class="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400"></i>
+                    <input type="text" id="reserve-search" oninput="window.renderReserveList()" placeholder="Zoek in reservelijst..."
+                           class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:bg-white transition">
+                </div>
+
+                <div class="p-2 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 space-y-1 flex-shrink-0">
+                    <p class="font-bold flex items-center space-x-1">
+                        <i data-lucide="shopping-bag" class="w-3.5 h-3.5 text-amber-700"></i>
+                        <span>Reservelijst / Wenslijst</span>
+                    </p>
+                    <p class="text-[10px] text-amber-700/80 leading-tight">Dit zijn planten die je nog wilt kopen of die tijdelijk in de reserve staan. Sleep ze naar de kaart om ze in een vak te plaatsen.</p>
+                </div>
+
+                <div id="reserve-catalog-list" class="flex-grow overflow-y-auto custom-scrollbar space-y-1.5 pr-0.5">
+                    <!-- Dynamic Reserve Items -->
+                </div>
+            </div>
+
         </div>
 
-        <!-- FLOATING PANEL 2: Bloeikalender -->
-        <div id="floating-bloom-panel" class="floating-panel bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200 flex flex-col overflow-hidden"
-             style="left: 390px; top: 45px; width: 300px; height: auto;"
-             onmousedown="event.stopPropagation()"
-             onwheel="event.stopPropagation()">
-            
-            <!-- Panel Header (Draggable) -->
-            <div class="panel-header bg-slate-100/90 border-b border-slate-200 px-3.5 py-2.5 flex items-center justify-between cursor-move flex-shrink-0"
-                 onmousedown="window.initPanelDrag(event, 'bloom')">
-                <div class="flex items-center space-x-2">
-                    <i data-lucide="flower-2" class="w-4 h-4 text-botanic-700"></i>
-                    <span class="font-bold text-slate-800 text-xs">Bloeikalender Maandoverzicht</span>
-                </div>
-            </div>
-
-            <!-- Panel Body Content -->
-            <div class="p-3.5 space-y-3 text-xs">
-                <div class="flex items-center justify-between">
-                    <span id="bloom-month-label" class="font-bold text-botanic-800 text-sm">Mei</span>
-                    <span id="bloom-count-badge" class="bg-botanic-100 text-botanic-800 font-bold px-2 py-0.5 rounded-full text-xs">0 in bloei</span>
-                </div>
-
-                <!-- Slider per maand -->
-                <input type="range" id="bloom-month-slider" min="1" max="12" value="5" step="1"
-                       oninput="window.updateBloomMonth(this.value)"
-                       class="w-full accent-botanic-600 cursor-pointer h-2 bg-slate-200 rounded-lg">
-
-                <div class="flex justify-between text-[10px] text-slate-400 font-medium px-1">
-                    <span>Jan</span>
-                    <span>Apr</span>
-                    <span>Jul</span>
-                    <span>Okt</span>
-                    <span>Dec</span>
-                </div>
-
-                <div id="bloom-active-list" class="max-h-36 overflow-y-auto custom-scrollbar space-y-1.5 pt-1 border-t border-slate-100">
-                    <!-- Dynamic blooming plants list -->
-                </div>
-            </div>
-
-            <!-- Resize Handle -->
-            <div class="panel-resize-handle" onmousedown="window.initPanelResize(event, 'bloom')"></div>
+        <!-- Floating Zoom Controls (Rechtsonderin) -->
+        <div class="absolute bottom-6 right-6 z-40 flex flex-col space-y-2" onmousedown="event.stopPropagation()">
+            <button onclick="window.zoomInCanvas()" class="w-10 h-10 bg-white/95 backdrop-blur-md hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-200 rounded-xl shadow-lg flex items-center justify-center transition" title="Inzoomen (+)">
+                <i data-lucide="zoom-in" class="w-5 h-5 text-slate-700"></i>
+            </button>
+            <button onclick="window.zoomOutCanvas()" class="w-10 h-10 bg-white/95 backdrop-blur-md hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-200 rounded-xl shadow-lg flex items-center justify-center transition" title="Uitzoomen (-)">
+                <i data-lucide="zoom-out" class="w-5 h-5 text-slate-700"></i>
+            </button>
+            <button onclick="window.resetCanvasView()" class="w-10 h-10 bg-white/95 backdrop-blur-md hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-200 rounded-xl shadow-lg flex items-center justify-center transition" title="Reset zoom en positie">
+                <i data-lucide="maximize" class="w-4 h-4 text-slate-700"></i>
+            </button>
         </div>
 
     </div>
@@ -469,10 +449,7 @@
 
         window.allPlants = [];
         window.zones = [];
-        window.panelLayouts = {
-            filter: { x: 30, y: 70, w: 340, h: 580, minimized: false },
-            bloom: { x: 390, y: 70, w: 300, h: 220, minimized: false }
-        };
+        window.isSidebarCollapsed = false;
 
         window.selectedZoneId = null;
         window.selectedPlantCatalogId = null;
@@ -480,6 +457,31 @@
         window.currentBloomMonthIndex = 5;
         window.isReadMode = true; // Standaard in leesmodus
         window.areFiltersCollapsed = false;
+
+        // --- Zijbalk In- en Uitklap Logica ---
+        window.toggleSidebar = function() {
+            window.isSidebarCollapsed = !window.isSidebarCollapsed;
+            window.updateSidebarUI();
+            window.saveState();
+        };
+
+        window.updateSidebarUI = function() {
+            const panel = document.getElementById('floating-filter-panel');
+            const edgeIcon = document.getElementById('edge-toggle-icon');
+            const headerIcon = document.getElementById('header-sidebar-icon');
+            if (!panel) return;
+
+            if (window.isSidebarCollapsed) {
+                panel.classList.add('is-collapsed');
+                if (edgeIcon) edgeIcon.setAttribute('data-lucide', 'chevron-right');
+                if (headerIcon) headerIcon.setAttribute('data-lucide', 'panel-left-open');
+            } else {
+                panel.classList.remove('is-collapsed');
+                if (edgeIcon) edgeIcon.setAttribute('data-lucide', 'chevron-left');
+                if (headerIcon) headerIcon.setAttribute('data-lucide', 'panel-left-close');
+            }
+            if (window.lucide) lucide.createIcons();
+        };
 
         // --- Inklapbare Filters Toggle ---
         window.toggleFiltersCollapse = function() {
@@ -646,7 +648,7 @@
                 setDoc(stateDocRef, {
                     allPlants: window.allPlants,
                     zones: window.zones,
-                    panelLayouts: window.panelLayouts,
+                    isSidebarCollapsed: window.isSidebarCollapsed,
                     bloomMonth: window.currentBloomMonthIndex,
                     isReadMode: window.isReadMode,
                     areFiltersCollapsed: window.areFiltersCollapsed,
@@ -658,105 +660,6 @@
         };
 
         // --- Panel & View Helpers ---
-        window.clampPanelPositions = function() {
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
-
-            ['filter', 'bloom'].forEach(panelKey => {
-                const layout = window.panelLayouts[panelKey];
-                const panel = document.getElementById(panelKey === 'bloom' ? 'floating-bloom-panel' : 'floating-filter-panel');
-                if (!layout || !panel) return;
-
-                // Maximaal beschikbare afmetingen berekenen
-                const minW = 260;
-                const minH = panelKey === 'bloom' ? 180 : 250;
-
-                layout.w = Math.min(Math.max(minW, layout.w || 300), Math.max(minW, vw - 20));
-                
-                const maxAllowedH = Math.max(minH, vh - 20);
-                if (layout.h) {
-                    layout.h = Math.min(layout.h, maxAllowedH);
-                }
-
-                // Zorg dat de positie binnen het scherm valt (minstens 10px van de bovenkant)
-                const maxX = Math.max(10, vw - layout.w - 10);
-                const currentH = layout.minimized ? 45 : (layout.h || 580);
-                const maxY = Math.max(10, vh - currentH - 10);
-
-                layout.x = Math.max(10, Math.min(layout.x, maxX));
-                layout.y = Math.max(10, Math.min(layout.y, maxY));
-            });
-        };
-
-        window.applyPanelPositions = function() {
-            window.clampPanelPositions();
-
-            const filterPanel = document.getElementById('floating-filter-panel');
-            if (filterPanel && window.panelLayouts.filter) {
-                filterPanel.style.left = `${window.panelLayouts.filter.x}px`;
-                filterPanel.style.top = `${window.panelLayouts.filter.y}px`;
-                filterPanel.style.width = `${window.panelLayouts.filter.w}px`;
-                
-                window.updatePanelMinimizeUI('filter');
-            }
-            const bloomPanel = document.getElementById('floating-bloom-panel');
-            if (bloomPanel && window.panelLayouts.bloom) {
-                bloomPanel.style.left = `${window.panelLayouts.bloom.x}px`;
-                bloomPanel.style.top = `${window.panelLayouts.bloom.y}px`;
-                bloomPanel.style.width = `${window.panelLayouts.bloom.w}px`;
-                
-                window.updatePanelMinimizeUI('bloom');
-            }
-        };
-
-        window.updatePanelMinimizeUI = function(panelKey) {
-            const panel = document.getElementById(panelKey === 'bloom' ? 'floating-bloom-panel' : 'floating-filter-panel');
-            if (!panel) return;
-
-            const isMinimized = !!(window.panelLayouts[panelKey] && window.panelLayouts[panelKey].minimized);
-            const btnIcon = panel.querySelector('.minimize-btn i');
-
-            if (isMinimized) {
-                panel.classList.add('is-minimized');
-                if (btnIcon) btnIcon.setAttribute('data-lucide', 'maximize-2');
-            } else {
-                panel.classList.remove('is-minimized');
-                
-                // Bij maximaliseren: bereken dynamisch de maximale beschikbare hoogte tot 10px vanaf het onder-scherm
-                const currentTop = panel.offsetTop || 10;
-                const maxAvailableH = Math.max(180, window.innerHeight - currentTop - 10);
-
-                if (panelKey === 'filter') {
-                    // Plantenpaneel strekt zich nu automatisch uit tot 10px van de onderkant
-                    panel.style.height = `${maxAvailableH}px`;
-                    if (window.panelLayouts.filter) {
-                        window.panelLayouts.filter.h = maxAvailableH;
-                    }
-                } else {
-                    const defaultH = 220;
-                    const savedH = (window.panelLayouts[panelKey] && window.panelLayouts[panelKey].h) || defaultH;
-                    panel.style.height = `${Math.min(savedH, maxAvailableH)}px`;
-                }
-
-                if (btnIcon) btnIcon.setAttribute('data-lucide', 'minimize-2');
-            }
-            if (window.lucide) lucide.createIcons();
-        };
-
-        window.togglePanelMinimize = function(panelKey, e) {
-            if (e) {
-                e.stopPropagation();
-                e.preventDefault();
-            }
-            if (!window.panelLayouts[panelKey]) {
-                window.panelLayouts[panelKey] = { x: 30, y: 10, w: 340, h: 580, minimized: false };
-            }
-
-            window.panelLayouts[panelKey].minimized = !window.panelLayouts[panelKey].minimized;
-            window.updatePanelMinimizeUI(panelKey);
-            window.saveState();
-        };
-
         window.updateCanvasTransform = function() {
             const canvas = document.getElementById('design-canvas');
             if (canvas) {
@@ -781,12 +684,21 @@
         window.handleZoom = function(e) {
             e.preventDefault();
             const zoomIntensity = 0.1;
-            const prevScale = window.scale;
             if (e.deltaY < 0) {
                 window.scale = Math.min(2.5, window.scale + zoomIntensity);
             } else {
                 window.scale = Math.max(0.3, window.scale - zoomIntensity);
             }
+            window.updateCanvasTransform();
+        };
+
+        window.zoomInCanvas = function() {
+            window.scale = Math.min(2.5, window.scale + 0.2);
+            window.updateCanvasTransform();
+        };
+
+        window.zoomOutCanvas = function() {
+            window.scale = Math.max(0.3, window.scale - 0.2);
             window.updateCanvasTransform();
         };
 
@@ -864,6 +776,8 @@
         window.initZoneDrag = function(e, zoneId) {
             if (window.isReadMode) return;
             e.stopPropagation();
+            e.preventDefault();
+            window.isPanning = false; // Voorkom dat de gehele kaart meebeweegt
             window.pushStateToUndo();
             window.dragType = 'zone';
             window.dragTarget = zoneId;
@@ -877,6 +791,8 @@
         window.initZoneResize = function(e, zoneId) {
             if (window.isReadMode) return;
             e.stopPropagation();
+            e.preventDefault();
+            window.isPanning = false;
             window.pushStateToUndo();
             window.dragType = 'zone-resize';
             window.dragTarget = zoneId;
@@ -909,7 +825,55 @@
 
         window.setupGlobalMouseEvents = function() {
             window.addEventListener('mousemove', (e) => {
-                if (window.isPanning) {
+                // Als we een vak of resize-handle slepen, voeren we uitsluitend dat uit
+                if (window.dragType === 'zone' && window.dragTarget) {
+                    const zone = window.zones.find(z => z.id === window.dragTarget);
+                    if (zone) {
+                        const canvasMouseX = (e.clientX - window.panX) / window.scale;
+                        const canvasMouseY = (e.clientY - window.panY) / window.scale;
+                        zone.x = Math.round(canvasMouseX - window.dragOffsetX);
+                        zone.y = Math.round(canvasMouseY - window.dragOffsetY);
+                        window.renderDesignerCanvas();
+                    }
+                    return;
+                }
+
+                if (window.dragType === 'zone-resize' && window.dragTarget) {
+                    const zone = window.zones.find(z => z.id === window.dragTarget);
+                    if (zone) {
+                        const deltaX = (e.clientX - window.dragOffsetX) / window.scale;
+                        const deltaY = (e.clientY - window.dragOffsetY) / window.scale;
+                        window.dragOffsetX = e.clientX;
+                        window.dragOffsetY = e.clientY;
+
+                        zone.w = Math.max(180, Math.round(zone.w + deltaX));
+                        zone.h = Math.max(140, Math.round(zone.h + deltaY));
+                        window.renderDesignerCanvas();
+                    }
+                    return;
+                }
+
+                // Slepen van een individuele plant op de kaart
+                if (window.dragType === 'plant' && window.dragTarget) {
+                    const { zoneId, instanceId } = window.dragTarget;
+                    const zone = window.zones.find(z => z.id === zoneId);
+                    const plantInst = zone?.plants.find(p => p.instanceId === instanceId);
+                    if (zone && plantInst) {
+                        const canvasMouseX = (e.clientX - window.panX) / window.scale;
+                        const canvasMouseY = (e.clientY - window.panY) / window.scale;
+
+                        // Bereken relatieve positie binnen het vak en houd de plant binnen de grenzen van het vak
+                        const newRelX = canvasMouseX - window.dragOffsetX - zone.x;
+                        const newRelY = canvasMouseY - window.dragOffsetY - zone.y;
+
+                        plantInst.x = Math.max(15, Math.min(newRelX, zone.w - 15));
+                        plantInst.y = Math.max(15, Math.min(newRelY, zone.h - 15));
+                        window.renderDesignerCanvas();
+                    }
+                    return;
+                }
+
+                if (window.isPanning && window.dragType !== 'zone' && window.dragType !== 'zone-resize' && window.dragType !== 'plant') {
                     window.panX = e.clientX - window.startPanX;
                     window.panY = e.clientY - window.startPanY;
                     window.updateCanvasTransform();
@@ -937,7 +901,7 @@
                 }
 
                 if (window.dragType === 'panel') {
-                    const panel = document.getElementById(window.activePanelKey === 'bloom' ? 'floating-bloom-panel' : 'floating-filter-panel');
+                    const panel = document.getElementById('floating-filter-panel');
                     if (panel) {
                         const panelW = window.panelLayouts[window.activePanelKey].w || 300;
                         const panelH = panel.offsetHeight || 580;
@@ -955,7 +919,7 @@
                         window.panelLayouts[window.activePanelKey].y = newY;
                     }
                 } else if (window.dragType === 'panel-resize') {
-                    const panel = document.getElementById(window.activePanelKey === 'bloom' ? 'floating-bloom-panel' : 'floating-filter-panel');
+                    const panel = document.getElementById('floating-filter-panel');
                     if (panel) {
                         const deltaX = e.clientX - window.dragOffsetX;
                         const deltaY = e.clientY - window.dragOffsetY;
@@ -979,42 +943,6 @@
                         if (!window.panelLayouts[window.activePanelKey]) window.panelLayouts[window.activePanelKey] = {};
                         window.panelLayouts[window.activePanelKey].w = newW;
                         window.panelLayouts[window.activePanelKey].h = newH;
-                    }
-                } else if (window.dragType === 'zone') {
-                    const zone = window.zones.find(z => z.id === window.dragTarget);
-                    if (zone) {
-                        zone.x = (e.clientX - window.panX) / window.scale - window.dragOffsetX;
-                        zone.y = (e.clientY - window.panY) / window.scale - window.dragOffsetY;
-                        window.renderDesignerCanvas();
-                    }
-                } else if (window.dragType === 'zone-resize') {
-                    const zone = window.zones.find(z => z.id === window.dragTarget);
-                    if (zone) {
-                        const deltaX = (e.clientX - window.dragOffsetX) / window.scale;
-                        const deltaY = (e.clientY - window.dragOffsetY) / window.scale;
-                        window.dragOffsetX = e.clientX;
-                        window.dragOffsetY = e.clientY;
-                        zone.w = Math.max(200, zone.w + deltaX);
-                        zone.h = Math.max(150, zone.h + deltaY);
-                        window.renderDesignerCanvas();
-                    }
-                } else if (window.dragType === 'plant') {
-                    const { zoneId, instanceId } = window.dragTarget;
-                    const zone = window.zones.find(z => z.id === zoneId);
-                    const plant = zone?.plants.find(p => p.instanceId === instanceId);
-                    if (zone && plant) {
-                        const canvasMouseX = (e.clientX - window.panX) / window.scale;
-                        const canvasMouseY = (e.clientY - window.panY) / window.scale;
-
-                        // Calculate proposed absolute coordinates
-                        const proposedAbsX = canvasMouseX - window.dragOffsetX;
-                        const proposedAbsY = canvasMouseY - window.dragOffsetY;
-
-                        // Position relative to current zone
-                        plant.x = proposedAbsX - zone.x;
-                        plant.y = proposedAbsY - zone.y;
-
-                        window.renderDesignerCanvas();
                     }
                 }
             });
@@ -1389,13 +1317,12 @@
                 if (!zone.visible) return;
                 const isSelected = window.selectedZoneId === zone.id;
                 const borderClass = isSelected ? 'border-2 border-botanic-600 shadow-2xl ring-2 ring-botanic-200' : 'border border-slate-300 shadow-lg';
-                const zoneHeaderCursor = window.isReadMode ? 'cursor-pointer' : 'cursor-move hover:bg-slate-100';
+                const zoneHeaderCursor = window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing hover:bg-slate-100';
 
                 html += `
                     <div class="garden-zone-box absolute rounded-2xl ${zone.color} ${borderClass} transition-shadow flex flex-col overflow-visible select-none cursor-pointer"
                          data-zone-id="${zone.id}"
-                         style="left: ${zone.x}px; top: ${zone.y}px; width: ${zone.w}px; height: ${zone.h}px;"
-                         onmousedown="if(!event.target.closest('.plant-dot') && !event.target.closest('button')) window.selectZone('${zone.id}')">
+                         style="left: ${zone.x}px; top: ${zone.y}px; width: ${zone.w}px; height: ${zone.h}px;">
                          
                         <div class="bg-white/95 backdrop-blur-sm px-3.5 py-2 border-b border-slate-200 flex items-center justify-between ${zoneHeaderCursor} transition z-20 rounded-t-2xl"
                              ${window.isReadMode ? `onclick="window.selectZone('${zone.id}')"` : `onmousedown="window.initZoneDrag(event, '${zone.id}')"`}>
@@ -1417,12 +1344,10 @@
                     const imgUrl = window.getPlantImageUrl(plantData);
                     const size = plantInst.size || 26;
 
-                    // Check ownership status (Not owned / Reservelijst)
                     const isNotOwned = (plantData.owned || 'ja').toLowerCase() === 'nee';
                     const borderStyle = isNotOwned ? 'border-dashed border-2 opacity-80' : 'border-2';
                     const ownedBadge = isNotOwned ? `<span class="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full w-3.5 h-3.5 text-[8px] flex items-center justify-center shadow-sm pointer-events-none">🛒</span>` : '';
 
-                    // Check if plant blooms in active month
                     const bloomStr = (plantData.bloom || '').toLowerCase();
                     const isBlooming = activeMonthName && bloomStr.includes(activeMonthName);
                     const bloomGlowClass = isBlooming ? 'ring-4 ring-pink-400 animate-pulse scale-110' : '';
@@ -1441,7 +1366,6 @@
                             </div>
                             ${ownedBadge}
 
-                            <!-- HOVER PREVIEW TOOLTIP -->
                             <div class="hidden group-hover:flex absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 bg-slate-900/95 text-white p-2 rounded-xl shadow-2xl flex-col items-center pointer-events-none z-50 transition border border-slate-700/50">
                                 <div class="w-full h-24 rounded-lg overflow-hidden bg-slate-800 mb-1.5 relative border border-slate-700">
                                     <img src="${imgUrl}" alt="${plantData.name}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=400&q=80';">
@@ -1455,8 +1379,13 @@
                     `;
                 });
 
+                // Toon de resize handle rechtsonder in bewerkmodus
                 if (!window.isReadMode) {
-                    html += `<div class="zone-resize-handle" onmousedown="window.initZoneResize(event, '${zone.id}')"></div>`;
+                    html += `
+                        <div class="zone-resize-handle" onmousedown="window.initZoneResize(event, '${zone.id}')" title="Sleep om het vak te vergroten of verkleinen">
+                            <i data-lucide="scaling" class="w-2.5 h-2.5 text-white pointer-events-none"></i>
+                        </div>
+                    `;
                 }
 
                 html += `
@@ -1791,15 +1720,12 @@
             const monthSlider = document.getElementById('bloom-month-slider');
             const monthLabel = document.getElementById('bloom-month-label');
             const bloomCountBadge = document.getElementById('bloom-count-badge');
-            const activeList = document.getElementById('bloom-active-list');
-
-            if (!monthSlider || !monthLabel || !activeList) return;
 
             const monthNames = ['', 'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
             const activeMonthName = monthNames[window.currentBloomMonthIndex] || 'Mei';
 
-            monthSlider.value = window.currentBloomMonthIndex;
-            monthLabel.innerText = activeMonthName;
+            if (monthSlider) monthSlider.value = window.currentBloomMonthIndex;
+            if (monthLabel) monthLabel.innerText = activeMonthName;
 
             const bloomingPlants = window.allPlants.filter(p => {
                 const bloomStr = (p.bloom || '').toLowerCase();
@@ -1809,28 +1735,15 @@
             if (bloomCountBadge) {
                 bloomCountBadge.innerText = `${bloomingPlants.length} in bloei`;
             }
-
-            if (bloomingPlants.length === 0) {
-                activeList.innerHTML = `<p class="text-[11px] text-slate-400 italic text-center py-2">Geen bloeiende planten in ${activeMonthName}</p>`;
-            } else {
-                activeList.innerHTML = bloomingPlants.map(p => {
-                    const colStyle = window.getPlantColorStyle(p.color);
-                    return `
-                        <div class="flex items-center justify-between text-[11px] bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-                            <div class="flex items-center space-x-2 truncate">
-                                <div class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${colStyle.bg}; border: 1px solid ${colStyle.border};"></div>
-                                <span class="font-medium text-slate-700 truncate">${p.name}</span>
-                            </div>
-                            <span class="text-[10px] text-pink-600 font-semibold bg-pink-50 px-1.5 py-0.5 rounded-full flex-shrink-0">🌸 ${p.bloom || 'Bloei'}</span>
-                        </div>
-                    `;
-                }).join('');
-            }
         };
 
         window.selectZone = function(zoneId) {
             window.selectedZoneId = zoneId;
             window.renderDesignerCanvas();
+            
+            // Note: Automatisch uitklappen van de zijbalk bij het selecteren van een vak is verwijderd
+            // om te voorkomen dat het paneel uitklapt wanneer een vak versleept of geklikt wordt.
+
             window.switchPanelTab('catalog');
             
             // Als de filters ingeklapt waren, klap ze tijdelijk uit om de zone-indicator goed te tonen
@@ -1870,30 +1783,22 @@
             const heightIdx = header.findIndex(h => h.includes('hoogte'));
             const bloomIdx = header.findIndex(h => h.includes('bloei'));
             const zoneIdx = header.findIndex(h => h.includes('vak') || h.includes('zone'));
+            const ownedIdx = header.findIndex(h => h.includes('heb ik') || h.includes('status'));
+            const quantityIdx = header.findIndex(h => h.includes('aantal'));
             const nurseryIdx = header.findIndex(h => h.includes('kweker') || h.includes('shop'));
             const linkIdx = header.findIndex(h => h.includes('link') || h.includes('url'));
             const imageIdx = header.findIndex(h => h.includes('foto') || h.includes('afbeelding') || h.includes('image'));
             const notesIdx = header.findIndex(h => h.includes('opmerking') || h.includes('notitie'));
-            const quantityIdx = header.findIndex(h => h.includes('aantal'));
-            const ownedIdx = header.findIndex(h => h.includes('heb ik') || h.includes('bezit') || h.includes('gekocht'));
 
             parsedCsvPlants = rows.slice(1).map((rowArr, index) => {
-                if (!rowArr || rowArr.length === 0) return null;
-                const firstCell = String(rowArr[0] || '').trim();
-                if (!firstCell) return null;
-
                 const getVal = (idx, fallback = '') => (idx !== -1 && rowArr[idx] !== undefined && rowArr[idx] !== null) ? String(rowArr[idx]).trim() : fallback;
+                
+                const firstCell = rowArr[0] !== undefined && rowArr[0] !== null ? String(rowArr[0]).trim() : '';
+                if (!firstCell && nameIdx === -1) return null;
 
                 let plantLink = getVal(linkIdx, '');
-                if (!plantLink || !plantLink.startsWith('http')) {
-                    const foundUrlCell = rowArr.find(cell => {
-                        if (!cell) return false;
-                        const str = String(cell).trim();
-                        return str.startsWith('http://') || str.startsWith('https://');
-                    });
-                    if (foundUrlCell) {
-                        plantLink = String(foundUrlCell).trim();
-                    }
+                if (!plantLink && firstCell.startsWith('http')) {
+                    plantLink = firstCell;
                 }
 
                 const customImageFromCol = getVal(imageIdx, '');
@@ -2163,7 +2068,6 @@
 
         // --- App Lifecycle Initialization ---
         window.addEventListener('DOMContentLoaded', async () => {
-            window.applyPanelPositions();
             window.setupGlobalMouseEvents();
             window.updateCanvasTransform();
 
@@ -2171,7 +2075,7 @@
             const canvasContainer = document.getElementById('canvas-content-container');
             if (canvasContainer) {
                 canvasContainer.addEventListener('mousedown', (e) => {
-                    if (e.target.closest('.plant-dot') || e.target.closest('button')) return;
+                    if (e.target.closest('.plant-dot') || e.target.closest('button') || (!window.isReadMode && e.target.closest('.bg-white\\/95'))) return;
                     const zoneBox = e.target.closest('.garden-zone-box');
                     if (zoneBox) {
                         const zoneId = zoneBox.getAttribute('data-zone-id');
@@ -2182,11 +2086,6 @@
                 });
             }
 
-            // Herbereken paneelgrootte als het venster van formaat verandert
-            window.addEventListener('resize', () => {
-                window.applyPanelPositions();
-            });
-            
             // Initialiseer knop uiterlijk direct voor leesmodus
             window.isReadMode = true;
             const modeText = document.getElementById('mode-text');
@@ -2238,12 +2137,12 @@
                         const data = docSnap.data();
                         window.allPlants = data.allPlants || [];
                         window.zones = data.zones || [];
-                        if (data.panelLayouts) window.panelLayouts = data.panelLayouts;
+                        if (data.isSidebarCollapsed !== undefined) window.isSidebarCollapsed = data.isSidebarCollapsed;
                         if (data.bloomMonth !== undefined) window.currentBloomMonthIndex = data.bloomMonth;
                         if (data.isReadMode !== undefined) window.isReadMode = data.isReadMode;
                         if (data.areFiltersCollapsed !== undefined) window.areFiltersCollapsed = data.areFiltersCollapsed;
 
-                        window.applyPanelPositions();
+                        window.updateSidebarUI();
                         window.syncPlantsWithZones();
                         window.populateFilterDropdowns();
                         
