@@ -879,16 +879,23 @@
                             e.touches[0].clientX - e.touches[1].clientX,
                             e.touches[0].clientY - e.touches[1].clientY
                         );
-                        const pinchFactor = currentDist / initialPinchDistance;
-                        const newScale = Math.min(2.5, Math.max(0.3, initialPinchScale * pinchFactor));
-                        window.scale = newScale;
-                        window.updateCanvasTransform();
+                        if (currentDist > 0 && initialPinchDistance > 0) {
+                            const pinchFactor = currentDist / initialPinchDistance;
+                            const newScale = Math.min(2.5, Math.max(0.3, initialPinchScale * pinchFactor));
+                            window.scale = newScale;
+                            window.updateCanvasTransform();
+                        }
                     } else if (e.touches.length === 1 && window.isPanning) {
-                        // Één vinger slepen (pan op mobiel)
+                        // Één vinger slepen (pan op mobiel) met Sanity check om NaN te voorkomen
                         e.preventDefault();
-                        window.panX = e.touches[0].clientX - window.startPanX;
-                        window.panY = e.touches[0].clientY - window.startPanY;
-                        window.updateCanvasTransform();
+                        const newPanX = e.touches[0].clientX - window.startPanX;
+                        const newPanY = e.touches[0].clientY - window.startPanY;
+
+                        if (!isNaN(newPanX) && !isNaN(newPanY)) {
+                            window.panX = newPanX;
+                            window.panY = newPanY;
+                            window.updateCanvasTransform();
+                        }
                     }
                 }, { passive: false });
 
