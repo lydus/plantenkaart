@@ -104,29 +104,29 @@
 <body class="h-full flex flex-col overflow-hidden text-slate-800 antialiased select-none">
 
     <!-- Top Navigation Header -->
-    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2 flex items-center justify-between z-30 shadow-sm flex-shrink-0">
-        <div class="flex items-center space-x-3">
+    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2 flex items-center justify-between z-30 shadow-sm flex-shrink-0 overflow-x-auto custom-scrollbar space-x-4">
+        <div class="flex items-center space-x-3 flex-shrink-0">
             <!-- Toggle Sidebar Button in Header -->
-            <button onclick="window.toggleSidebar()" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition border border-slate-200" title="Klap plantenpaneel in/uit">
+            <button onclick="window.toggleSidebar()" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition border border-slate-200 flex-shrink-0" title="Klap plantenpaneel in/uit">
                 <i id="header-sidebar-icon" data-lucide="panel-left-close" class="w-4 h-4 text-botanic-700"></i>
             </button>
-            <div class="w-8 h-8 rounded-xl bg-botanic-700 text-white flex items-center justify-center shadow-md shadow-botanic-700/20">
+            <div class="w-8 h-8 rounded-xl bg-botanic-700 text-white flex items-center justify-center shadow-md shadow-botanic-700/20 flex-shrink-0">
                 <i data-lucide="sprout" class="w-5 h-5"></i>
             </div>
-            <div class="hidden sm:block">
+            <div class="hidden sm:block flex-shrink-0">
                 <h1 class="font-bold text-slate-800 text-sm leading-tight">Tuinbeplantingsplan Studio</h1>
                 <p class="text-[11px] text-slate-500">Ontwerp & Beplantingsbeheer</p>
             </div>
         </div>
 
         <!-- Integrated Bloom Calendar Controls (Center Header) -->
-        <div class="flex items-center space-x-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-inner my-0.5">
+        <div class="flex items-center space-x-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-inner my-0.5 flex-shrink-0">
             <div class="flex items-center space-x-1.5 flex-shrink-0">
                 <i data-lucide="flower-2" class="w-4 h-4 text-botanic-700"></i>
                 <span id="bloom-month-label" class="font-bold text-botanic-800 text-xs w-16">Mei</span>
             </div>
             
-            <div class="flex flex-col w-36 sm:w-48">
+            <div class="flex flex-col w-36 sm:w-48 flex-shrink-0">
                 <input type="range" id="bloom-month-slider" min="1" max="12" value="5" step="1"
                        oninput="window.updateBloomMonth(this.value)"
                        class="w-full accent-botanic-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg">
@@ -142,21 +142,21 @@
             <span id="bloom-count-badge" class="bg-botanic-100 text-botanic-800 font-bold px-2 py-0.5 rounded-full text-[11px] flex-shrink-0 whitespace-nowrap">0 in bloei</span>
         </div>
 
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-2 flex-shrink-0">
             <!-- Cloud Sync Status Badge -->
-            <div id="cloud-status" class="flex items-center space-x-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
+            <div id="cloud-status" class="flex items-center space-x-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200 flex-shrink-0">
                 <i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i>
                 <span id="cloud-status-text">Verbinden...</span>
             </div>
 
             <!-- Leesmodus / Bewerkmodus Schakelaar -->
-            <button id="btn-mode-toggle" onclick="window.toggleAppMode()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200" title="Wissel tussen bewerk- en leesmodus">
+            <button id="btn-mode-toggle" onclick="window.toggleAppMode()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200 flex-shrink-0 whitespace-nowrap" title="Wissel tussen bewerk- en leesmodus">
                 <i id="mode-icon" data-lucide="edit-3" class="w-3.5 h-3.5 text-botanic-700"></i>
                 <span id="mode-text">Bewerken</span>
             </button>
 
             <!-- Undo / Redo Buttons -->
-            <div id="undo-redo-group" class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+            <div id="undo-redo-group" class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 flex-shrink-0">
                 <button id="btn-undo" class="p-1.5 hover:bg-slate-200 text-slate-700 disabled:opacity-30 disabled:hover:bg-transparent rounded transition cursor-pointer" title="Ongedaan maken (Ctrl+Z)">
                     <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
                 </button>
@@ -166,11 +166,11 @@
                 </button>
             </div>
 
-            <button onclick="window.resetCanvasView()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5" title="Centreer kaart">
+            <button onclick="window.resetCanvasView()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 flex-shrink-0 whitespace-nowrap" title="Centreer kaart">
                 <i data-lucide="compass" class="w-3.5 h-3.5"></i>
                 <span class="hidden md:inline">Centreer</span>
             </button>
-            <button onclick="window.exportGardenStudio()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center space-x-1.5 shadow-sm" title="Exporteer als zelfstandig HTML-bestand">
+            <button onclick="window.exportGardenStudio()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition flex items-center space-x-1.5 shadow-sm flex-shrink-0 whitespace-nowrap" title="Exporteer als zelfstandig HTML-bestand">
                 <i data-lucide="download" class="w-3.5 h-3.5"></i>
                 <span class="hidden md:inline">Exporteer Tuinbestand</span>
             </button>
