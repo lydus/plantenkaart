@@ -2,7 +2,7 @@
 <html lang="nl" class="h-full bg-slate-100">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tuinbeplantingsplan Studio</title>
     
     <!-- Tailwind CSS -->
@@ -93,6 +93,7 @@
         /* Subtiel rasterpatroon voor de achtergrond van de tuinkaart */
         #canvas-viewport {
             background-color: #f8fafc;
+            touch-action: none;
             background-image: 
                 radial-gradient(circle, #cbd5e1 1px, transparent 1px),
                 linear-gradient(to right, rgba(226, 232, 240, 0.6) 1px, transparent 1px),
@@ -621,6 +622,10 @@
         window.dragStartY = 0;
         window.activePanelKey = null;
 
+        // Touch Pinch-to-Zoom State
+        let initialPinchDistance = null;
+        let initialPinchScale = 1;
+
         let db = null;
         let auth = null;
         let isCloudConnected = false;
@@ -824,6 +829,59 @@
         };
 
         window.setupGlobalMouseEvents = function() {
+            // --- Touch & Pinch-to-Zoom Events voor Mobiel ---
+            const viewportEl = document.getElementById('canvas-viewport');
+            if (viewportEl) {
+                viewportEl.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 2) {
+                        // Twee vingers gedetecteerd: start pinch-to-zoom
+                        e.preventDefault();
+                        window.isPanning = false;
+                        const dist = Math.hypot(
+                            e.touches[0].clientX - e.touches[1].clientX,
+                            e.touches[0].clientY - e.touches[1].clientY
+                        );
+                        initialPinchDistance = dist;
+                        initialPinchScale = window.scale;
+                    } else if (e.touches.length === 1 && !e.target.closest('.sidebar-panel') && !e.target.closest('.plant-dot') && !e.target.closest('header') && !e.target.closest('.garden-zone-box')) {
+                        // Één vinger op achtergrond: start pannen
+                        window.isPanning = true;
+                        window.startPanX = e.touches[0].clientX - window.panX;
+                        window.startPanY = e.touches[0].clientY - window.panY;
+                    }
+                }, { passive: false });
+
+                viewportEl.addEventListener('touchmove', (e) => {
+                    if (e.touches.length === 2 && initialPinchDistance) {
+                        // Pinch-to-zoom verwerken
+                        e.preventDefault();
+                        const currentDist = Math.hypot(
+                            e.touches[0].clientX - e.touches[1].clientX,
+                            e.touches[0].clientY - e.touches[1].clientY
+                        );
+                        const pinchFactor = currentDist / initialPinchDistance;
+                        const newScale = Math.min(2.5, Math.max(0.3, initialPinchScale * pinchFactor));
+                        window.scale = newScale;
+                        window.updateCanvasTransform();
+                    } else if (e.touches.length === 1 && window.isPanning) {
+                        // Één vinger slepen (pan op mobiel)
+                        e.preventDefault();
+                        window.panX = e.touches[0].clientX - window.startPanX;
+                        window.panY = e.touches[0].clientY - window.startPanY;
+                        window.updateCanvasTransform();
+                    }
+                }, { passive: false });
+
+                viewportEl.addEventListener('touchend', (e) => {
+                    if (e.touches.length < 2) {
+                        initialPinchDistance = null;
+                    }
+                    if (e.touches.length === 0) {
+                        window.isPanning = false;
+                    }
+                });
+            }
+
             window.addEventListener('mousemove', (e) => {
                 // Als we een vak of resize-handle slepen, voeren we uitsluitend dat uit
                 if (window.dragType === 'zone' && window.dragTarget) {
