@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tuinbeplantingsplan Studio</title>
+    <title>Plantenkaart</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -123,15 +123,11 @@
     <!-- Top Navigation Header -->
     <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2 flex items-center justify-between z-30 shadow-sm flex-shrink-0 overflow-x-auto custom-scrollbar space-x-4">
         <div class="flex items-center space-x-3 flex-shrink-0">
-            <!-- Toggle Sidebar Button in Header -->
-            <button onclick="window.toggleSidebar()" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition border border-slate-200 flex-shrink-0" title="Klap plantenpaneel in/uit">
-                <i id="header-sidebar-icon" data-lucide="panel-left-close" class="w-4 h-4 text-botanic-700"></i>
-            </button>
             <div class="w-8 h-8 rounded-xl bg-botanic-700 text-white flex items-center justify-center shadow-md shadow-botanic-700/20 flex-shrink-0">
                 <i data-lucide="sprout" class="w-5 h-5"></i>
             </div>
             <div class="hidden sm:block flex-shrink-0">
-                <h1 class="font-bold text-slate-800 text-sm leading-tight">Tuinbeplantingsplan Studio</h1>
+                <h1 class="font-bold text-slate-800 text-sm leading-tight">Plantenkaart</h1>
                 <p class="text-[11px] text-slate-500">Ontwerp & Beplantingsbeheer</p>
             </div>
         </div>
@@ -268,7 +264,7 @@
                         </button>
                         <div class="flex items-center space-x-1">
                             <button onclick="window.openCsvImportModal()" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-medium transition flex items-center space-x-1">
-                                <i data-lucide="file-spread-sheet" class="w-3 h-3 text-emerald-700"></i>
+                                <i data-lucide="upload" class="w-3 h-3 text-emerald-700"></i>
                                 <span>Sheet</span>
                             </button>
                             <button onclick="window.resetFilters()" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[11px] font-medium transition">
@@ -524,17 +520,42 @@
 
         // --- Color & Image Helpers ---
         window.getPlantColorStyle = function(colorName) {
+            const colorStr = (colorName || 'groen').toLowerCase().trim();
+
             const map = {
                 groen: { bg: '#348b5e', border: '#23593f', text: '#ffffff' },
-                paars: { bg: '#8b5cf6', border: '#6d28d9', text: '#ffffff' },
-                roze: { bg: '#ec4899', border: '#db2777', text: '#ffffff' },
-                geel: { bg: '#eab308', border: '#ca8a04', text: '#ffffff' },
+                paars: { bg: '#7c3aed', border: '#5b21b6', text: '#ffffff' },
+                donkerpaars: { bg: '#581c87', border: '#3b0764', text: '#ffffff' },
+                purper: { bg: '#7e22ce', border: '#6b21a8', text: '#ffffff' },
+                blauwviolet: { bg: '#7b68ee', border: '#5a4bcf', text: '#ffffff' },
+                'blauw-violet': { bg: '#7b68ee', border: '#5a4bcf', text: '#ffffff' },
+                lila: { bg: '#c084fc', border: '#a855f7', text: '#ffffff' },
+                roze: { bg: '#f472b6', border: '#ec4899', text: '#ffffff' },
+                lichtroze: { bg: '#fbcfe8', border: '#f472b6', text: '#831843' },
+                geel: { bg: '#facc15', border: '#eab308', text: '#854d0e' },
+                goudgeel: { bg: '#f59e0b', border: '#d97706', text: '#ffffff' },
                 wit: { bg: '#f8fafc', border: '#cbd5e1', text: '#1e293b' },
                 blauw: { bg: '#3b82f6', border: '#2563eb', text: '#ffffff' },
+                lichtblauw: { bg: '#60a5fa', border: '#3b82f6', text: '#ffffff' },
                 rood: { bg: '#ef4444', border: '#dc2626', text: '#ffffff' },
-                oranje: { bg: '#f97316', border: '#ea580c', text: '#ffffff' }
+                donkerrood: { bg: '#991b1b', border: '#7f1d1d', text: '#ffffff' },
+                oranje: { bg: '#f97316', border: '#ea580c', text: '#ffffff' },
+                bruin: { bg: '#92400e', border: '#78350f', text: '#ffffff' },
+                zilver: { bg: '#94a3b8', border: '#64748b', text: '#ffffff' },
+                bordeaux: { bg: '#881337', border: '#4c0519', text: '#ffffff' }
             };
-            return map[(colorName || 'groen').toLowerCase()] || map.groen;
+
+            // Exact match direct retourneren
+            if (map[colorStr]) return map[colorStr];
+
+            // Fuzzy/Deeltijdse match (bijv. "roze/wit" of "blauw met paars")
+            for (let key in map) {
+                if (colorStr.includes(key)) {
+                    return map[key];
+                }
+            }
+
+            return map.groen;
         };
 
         window.getPlantImageUrl = function(plant) {
@@ -1287,7 +1308,13 @@
                 if (selectedZone) {
                     const plantZones = (p.zones || '').split(',').map(z => z.trim().toLowerCase());
                     const targetZoneName = selectedZone.name.toLowerCase();
-                    const matchesZone = plantZones.some(z => z === targetZoneName || z.includes(targetZoneName) || targetZoneName.includes(z));
+                    // Soepelere vergelijking op vaknaam (bijv. "Vak A" matcht met "A" en vice versa)
+                    const matchesZone = plantZones.some(z => 
+                        z === targetZoneName || 
+                        z.replace(/vak\s*/i, '') === targetZoneName.replace(/vak\s*/i, '') ||
+                        targetZoneName.includes(z) || 
+                        z.includes(targetZoneName)
+                    );
                     if (!matchesZone) return false;
                 }
 
@@ -1826,19 +1853,15 @@
             window.selectedZoneId = zoneId;
             window.renderDesignerCanvas();
             
-            // Note: Automatisch uitklappen van de zijbalk bij het selecteren van een vak is verwijderd
-            // om te voorkomen dat het paneel uitklapt wanneer een vak versleept of geklikt wordt.
-
+            // Schakel over naar het overzicht en ververst de plantenlijst gefilterd op dit vak
             window.switchPanelTab('catalog');
-            
-            // Als de filters ingeklapt waren, klap ze tijdelijk uit om de zone-indicator goed te tonen
-            const filterContainer = document.getElementById('filter-options-container');
-            if (filterContainer && window.areFiltersCollapsed) {
-                window.areFiltersCollapsed = false;
-                filterContainer.classList.remove('hidden');
-            }
-
             window.filterPlants();
+
+            // Als het filterpaneel ingeklapt is, klappen we deze open bij het aanklikken van een vak
+            if (window.isSidebarCollapsed) {
+                window.isSidebarCollapsed = false;
+                window.updateSidebarUI();
+            }
         };
 
         window.clearSelectedZoneFilter = function() {
@@ -1847,285 +1870,248 @@
             window.filterPlants();
         };
 
-        window.toggleAllZones = function() {
-            const anyVisible = window.zones.some(z => z.visible);
-            window.zones.forEach(z => z.visible = !anyVisible);
-            window.renderDesignerCanvas();
+        window.toggleZoneVisibility = function(zoneId, event) {
+            if (event) event.stopPropagation();
+            const zone = window.zones.find(z => z.id === zoneId);
+            if (zone) {
+                zone.visible = !zone.visible;
+                window.renderDesignerCanvas();
+            }
         };
 
-        window.processRawCsvText = function(csvText) {
-            if (!csvText) return;
-            const parsed = Papa.parse(csvText, { skipEmptyLines: true });
-            if (!parsed.data || parsed.data.length < 2) return;
+        // --- Google Sheet CSV Importer ---
+        window.fetchDefaultGardenSheet = async function() {
+            // Bijgewerkte en correcte Google Sheet CSV export-link
+            const rawSheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQpPx2dcL_HkAnxs_PhSg582oFExs3fyQsFMsCZPzKG-NfYnuRYRiVNjEMGXDNesr1aYqTXBZvTn11I/pub?output=csv";
+            const loadingStatus = document.getElementById('csv-loading-status');
+            const statusText = document.getElementById('csv-status-step-text');
+            const btnFetch = document.getElementById('btn-fetch-sheet');
+            const previewSummary = document.getElementById('csv-preview-summary');
+            const btnConfirm = document.getElementById('btn-confirm-import');
 
-            const rows = parsed.data;
-            const header = rows[0].map(h => String(h).toLowerCase().trim());
+            if (loadingStatus) loadingStatus.classList.remove('hidden');
+            if (btnFetch) btnFetch.disabled = true;
 
-            const nameIdx = header.findIndex(h => h.includes('naam') || h.includes('plant'));
-            const typeIdx = header.findIndex(h => h.includes('type') || h.includes('soort'));
-            const colorIdx = header.findIndex(h => h.includes('kleur'));
-            const lightIdx = header.findIndex(h => h.includes('standplaats') || h.includes('licht'));
-            const heightIdx = header.findIndex(h => h.includes('hoogte'));
-            const bloomIdx = header.findIndex(h => h.includes('bloei'));
-            const zoneIdx = header.findIndex(h => h.includes('vak') || h.includes('zone'));
-            const ownedIdx = header.findIndex(h => h.includes('heb ik') || h.includes('status'));
-            const quantityIdx = header.findIndex(h => h.includes('aantal'));
-            const nurseryIdx = header.findIndex(h => h.includes('kweker') || h.includes('shop'));
-            const linkIdx = header.findIndex(h => h.includes('link') || h.includes('url'));
-            const imageIdx = header.findIndex(h => h.includes('foto') || h.includes('afbeelding') || h.includes('image'));
-            const notesIdx = header.findIndex(h => h.includes('opmerking') || h.includes('notitie'));
-
-            parsedCsvPlants = rows.slice(1).map((rowArr, index) => {
-                const getVal = (idx, fallback = '') => (idx !== -1 && rowArr[idx] !== undefined && rowArr[idx] !== null) ? String(rowArr[idx]).trim() : fallback;
+            try {
+                if (statusText) statusText.innerText = "Data ophalen van Google Sheet...";
                 
-                const firstCell = rowArr[0] !== undefined && rowArr[0] !== null ? String(rowArr[0]).trim() : '';
-                if (!firstCell && nameIdx === -1) return null;
-
-                let plantLink = getVal(linkIdx, '');
-                if (!plantLink && firstCell.startsWith('http')) {
-                    plantLink = firstCell;
+                // Probeer direct op te halen, en schakel anders over op een CORS-proxy
+                let response;
+                try {
+                    response = await fetch(rawSheetUrl);
+                    if (!response.ok) throw new Error("Direct Fetch Failed");
+                } catch (e) {
+                    const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(rawSheetUrl);
+                    response = await fetch(proxyUrl);
                 }
 
-                const customImageFromCol = getVal(imageIdx, '');
-                const nurseryFromColJ = rowArr[9] !== undefined && rowArr[9] !== null ? String(rowArr[9]).trim() : '';
+                if (!response.ok) throw new Error("Netwerkfout bij ophalen Sheet");
+                const csvText = await response.text();
 
-                const name = getVal(nameIdx) || firstCell;
-                const type = getVal(typeIdx, 'Vaste plant');
-                const color = getVal(colorIdx, 'groen').toLowerCase();
-                const light = getVal(lightIdx, 'Halfschaduw / Schaduw');
-                const height = getVal(heightIdx, '');
-                
-                let rawBloom = getVal(bloomIdx, '');
-                const monthMap = {
-                    '1': 'Januari', '2': 'Februari', '3': 'Maart', '4': 'April',
-                    '5': 'Mei', '6': 'Juni', '7': 'Juli', '8': 'Augustus',
-                    '9': 'September', '10': 'Oktober', '11': 'November', '12': 'December'
+                if (statusText) statusText.innerText = "CSV verwerken & vergelijken...";
+
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        parsedCsvPlants = window.convertCsvDataToPlants(results.data);
+                        
+                        if (loadingStatus) loadingStatus.classList.add('hidden');
+                        if (btnFetch) btnFetch.disabled = false;
+
+                        if (previewSummary && btnConfirm) {
+                            previewSummary.classList.remove('hidden');
+                            btnConfirm.disabled = false;
+                            
+                            const countEl = document.getElementById('csv-preview-count');
+                            const detailEl = document.getElementById('csv-changes-detail');
+                            
+                            // Bereken gedetailleerde verschillen ten opzichte van de huidige plantenlijst
+                            const existingMap = new Map(window.allPlants.map(p => [p.name.toLowerCase().trim(), p]));
+                            const newPlants = [];
+                            const updatedPlants = [];
+                            const unchangedPlants = [];
+
+                            parsedCsvPlants.forEach(p => {
+                                const key = p.name.toLowerCase().trim();
+                                const existing = existingMap.get(key);
+                                if (!existing) {
+                                    newPlants.push(p);
+                                } else {
+                                    // Controleer welke specifieke velden zijn gewijzigd
+                                    const fieldChanges = [];
+                                    if (existing.owned !== p.owned) fieldChanges.push(`Status: '${existing.owned || 'ja'}' ➔ '${p.owned}'`);
+                                    if (existing.type !== p.type) fieldChanges.push(`Type: '${existing.type}' ➔ '${p.type}'`);
+                                    if (existing.color !== p.color) fieldChanges.push(`Kleur: '${existing.color}' ➔ '${p.color}'`);
+                                    if (existing.light !== p.light) fieldChanges.push(`Standplaats: '${existing.light}' ➔ '${p.light}'`);
+                                    if (existing.height !== p.height) fieldChanges.push(`Hoogte: '${existing.height}' ➔ '${p.height}'`);
+                                    if (existing.bloom !== p.bloom) fieldChanges.push(`Bloei: '${existing.bloom}' ➔ '${p.bloom}'`);
+                                    if (existing.zones !== p.zones) fieldChanges.push(`Vakken: '${existing.zones || 'geen'}' ➔ '${p.zones || 'geen'}'`);
+                                    if (existing.nursery !== p.nursery) fieldChanges.push(`Kweker: '${existing.nursery || '-'}' ➔ '${p.nursery || '-'}'`);
+
+                                    if (fieldChanges.length > 0) {
+                                        updatedPlants.push({ name: p.name, changes: fieldChanges });
+                                    } else {
+                                        unchangedPlants.push(p);
+                                    }
+                                }
+                            });
+
+                            if (countEl) countEl.innerText = `✓ ${parsedCsvPlants.length} planten ingelezen`;
+                            
+                            let detailsHtml = `<div class="space-y-2">`;
+
+                            // Samenvatting tellers
+                            detailsHtml += `
+                                <div class="grid grid-cols-3 gap-1 text-center font-bold text-[10px] mb-2">
+                                    <div class="bg-emerald-100 text-emerald-800 p-1 rounded-lg">+${newPlants.length} nieuw</div>
+                                    <div class="bg-amber-100 text-amber-800 p-1 rounded-lg">${updatedPlants.length} gewijzigd</div>
+                                    <div class="bg-slate-100 text-slate-700 p-1 rounded-lg">${unchangedPlants.length} ongewijzigd</div>
+                                </div>
+                            `;
+
+                            // Lijst met Nieuwe Planten
+                            if (newPlants.length > 0) {
+                                detailsHtml += `
+                                    <div>
+                                        <p class="font-bold text-emerald-900 text-[11px] flex items-center space-x-1">
+                                            <span>✨ Nieuw toe te voegen (${newPlants.length}):</span>
+                                        </p>
+                                        <ul class="list-disc pl-4 space-y-0.5 text-[10px] text-emerald-800">
+                                            ${newPlants.slice(0, 10).map(np => `<li><strong>${np.name}</strong> (${np.type || 'Vaste plant'} • Vak: ${np.zones || 'Geen'})</li>`).join('')}
+                                            ${newPlants.length > 10 ? `<li class="italic text-emerald-600">+ nog ${newPlants.length - 10} andere nieuwe planten...</li>` : ''}
+                                        </ul>
+                                    </div>
+                                `;
+                            }
+
+                            // Lijst met Gewijzigde Planten inclusief de exacte verschillen
+                            if (updatedPlants.length > 0) {
+                                detailsHtml += `
+                                    <div>
+                                        <p class="font-bold text-amber-900 text-[11px] flex items-center space-x-1 mt-1">
+                                            <span>🔄 Gegevens bijwerken (${updatedPlants.length}):</span>
+                                        </p>
+                                        <ul class="space-y-1 text-[10px] text-amber-900 mt-1">
+                                            ${updatedPlants.slice(0, 10).map(up => `
+                                                <li class="bg-amber-100/60 p-1.5 rounded-md border border-amber-200">
+                                                    <span class="font-bold block text-amber-950">${up.name}</span>
+                                                    <span class="text-[9.5px] text-amber-800 block">${up.changes.join(' • ')}</span>
+                                                </li>
+                                            `).join('')}
+                                            ${updatedPlants.length > 10 ? `<li class="italic text-amber-600 pl-1">+ nog ${updatedPlants.length - 10} andere gewijzigde planten...</li>` : ''}
+                                        </ul>
+                                    </div>
+                                `;
+                            }
+
+                            if (newPlants.length === 0 && updatedPlants.length === 0) {
+                                detailsHtml += `<p class="text-[11px] text-emerald-800 italic">Alle planten in de Google Sheet zijn identiek aan de huidige stand in de app.</p>`;
+                            }
+
+                            detailsHtml += `</div>`;
+
+                            if (detailEl) detailEl.innerHTML = detailsHtml;
+                        }
+                    },
+                    error: function(err) {
+                        if (loadingStatus) loadingStatus.classList.add('hidden');
+                        if (btnFetch) btnFetch.disabled = false;
+                        alert("Fout bij verwerken van CSV-bestand: " + err.message);
+                    }
+                });
+            } catch (err) {
+                if (loadingStatus) loadingStatus.classList.add('hidden');
+                if (btnFetch) btnFetch.disabled = false;
+                alert("Kon het Google Sheet CSV-bestand niet ophalen. Controleer de internetverbinding.");
+            }
+        };
+
+        window.convertCsvDataToPlants = function(data) {
+            return data.map((row, index) => {
+                // Zoek kolommen flexibel op kolomnaam
+                const getVal = (possibleNames) => {
+                    const keys = Object.keys(row);
+                    for (let p of possibleNames) {
+                        const foundKey = keys.find(k => k.toLowerCase().trim() === p.toLowerCase().trim());
+                        if (foundKey && row[foundKey] !== undefined) return String(row[foundKey]).trim();
+                    }
+                    return '';
                 };
+
+                const name = getVal(['naam', 'plantnaam', 'plant', 'species', 'name']);
+                if (!name) return null;
+
+                const ownedRaw = getVal(['hebt u deze plant?', 'heb ik?', 'in tuin', 'owned', 'gekocht', 'bezit']);
+                const owned = ownedRaw.toLowerCase().includes('nee') ? 'nee' : 'ja';
+
+                const quantity = getVal(['aantal', 'hoeveelheid', 'quantity', 'count']) || '1';
+                const type = getVal(['planttype', 'type', 'soort', 'categorie']) || 'Vaste plant';
+                const color = getVal(['bloemkleur', 'kleur', 'color', 'bloem kleur']) || 'groen';
+                const light = getVal(['standplaats', 'licht', 'zon/schaduw', 'light']) || 'Halfschaduw';
+                const height = getVal(['maximale hoogte', 'hoogte', 'height', 'grootte']) || '';
+                const bloom = getVal(['bloeimaanden', 'bloeitijd', 'bloei', 'bloom']) || '';
+                const zones = getVal(['vakken', 'vak', 'tuinvak', 'zone', 'plek']) || '';
+                const nursery = getVal(['kweker', 'winkel', 'waar gekocht', 'nursery', 'shop']) || '';
+                const link = getVal(['link', 'url', 'website', 'info link']) || '';
+                const notes = getVal(['opmerkingen', 'notities', 'extra', 'notes']) || '';
                 
-                let bloom = rawBloom;
-                if (rawBloom) {
-                    bloom = rawBloom.replace(/\b([1-9]|1[0-2])\b/g, (match) => monthMap[match] || match);
+                // Expliciete controle op kolom N / afbeeldingskolom
+                let image = getVal(['n', 'afbeelding', 'foto', 'image', 'picture', 'img']);
+                if (!image.startsWith('http')) {
+                    image = '';
                 }
 
-                let rawZones = getVal(zoneIdx, 'Wenslijst');
-                const nursery = nurseryFromColJ || getVal(nurseryIdx, '');
-                const notes = getVal(notesIdx, '');
-                const quantity = getVal(quantityIdx, '1');
-                
-                const hebIkRaw = getVal(ownedIdx, 'ja').toLowerCase();
-                let owned = 'ja';
-                if (hebIkRaw === 'nee' || hebIkRaw === 'no' || hebIkRaw === 'false' || hebIkRaw === '0') {
-                    owned = 'nee';
-                    rawZones = 'Reservelijst';
-                }
-
-                const plantObj = {
-                    id: 'plant-csv-' + Date.now() + '-' + index,
+                return {
+                    id: 'plant-csv-' + index + '-' + Date.now(),
                     name,
+                    owned,
+                    quantity,
                     type,
                     color,
                     light,
                     height,
                     bloom,
-                    zones: rawZones,
-                    owned,
-                    quantity,
+                    zones,
                     nursery,
-                    link: plantLink,
+                    link,
                     notes,
-                    image: customImageFromCol
+                    image
                 };
-
-                if (!customImageFromCol) {
-                    window.extractImageFromUrl(plantObj).then(img => {
-                        if (img) plantObj.image = img;
-                    });
-                }
-
-                return plantObj;
             }).filter(Boolean);
-
-            // Analyseer wijzigingen ten opzichte van de huidige database
-            let newPlantsCount = 0;
-            let updatedPlantsCount = 0;
-            let unchangedCount = 0;
-            let changeLogs = [];
-
-            parsedCsvPlants.forEach(newP => {
-                const existingP = window.allPlants.find(p => p.name.trim().toLowerCase() === newP.name.trim().toLowerCase());
-                if (!existingP) {
-                    newPlantsCount++;
-                    changeLogs.push(`✨ <strong>Nieuwe plant:</strong> ${newP.name}`);
-                } else {
-                    let fieldChanges = [];
-                    if ((existingP.color || '').toLowerCase() !== (newP.color || '').toLowerCase()) fieldChanges.push(`kleur (${existingP.color} ➔ ${newP.color})`);
-                    if (existingP.bloom !== newP.bloom) fieldChanges.push(`bloeitijd (${existingP.bloom || 'geen'} ➔ ${newP.bloom})`);
-                    if (existingP.nursery !== newP.nursery) fieldChanges.push(`kweker`);
-                    if (existingP.zones !== newP.zones) fieldChanges.push(`vakken`);
-                    if (existingP.image !== newP.image && newP.image) fieldChanges.push(`afbeelding`);
-
-                    if (fieldChanges.length > 0) {
-                        updatedPlantsCount++;
-                        changeLogs.push(`✏️ <strong>Aangepast (${newP.name}):</strong> ${fieldChanges.join(', ')}`);
-                    } else {
-                        unchangedCount++;
-                    }
-                }
-            });
-
-            const summaryContainerEl = document.getElementById('csv-preview-summary');
-            const previewCount = document.getElementById('csv-preview-count');
-            const detailBox = document.getElementById('csv-changes-detail');
-            const confirmBtn = document.getElementById('btn-confirm-import');
-
-            if (previewCount) previewCount.innerText = `${parsedCsvPlants.length} planten verwerkt uit Google Sheet!`;
-            
-            if (detailBox) {
-                let summaryHeader = `<div class="font-semibold text-[11px] mb-1 text-emerald-900 flex items-center space-x-2">
-                    <span>Nieuw: <strong>${newPlantsCount}</strong></span> • 
-                    <span>Gewijzigd: <strong>${updatedPlantsCount}</strong></span> • 
-                    <span>Ongewijzigd: <strong>${unchangedCount}</strong></span>
-                </div>`;
-
-                if (changeLogs.length === 0) {
-                    detailBox.innerHTML = summaryHeader + `<p class="text-slate-500 italic">Geen inhoudelijke wijzigingen gevonden; alle plantgegevens zijn al actueel.</p>`;
-                } else {
-                    detailBox.innerHTML = summaryHeader + `<ul class="space-y-1">${changeLogs.map(log => `<li>${log}</li>`).join('')}</ul>`;
-                }
-            }
-
-            if (summaryContainerEl) summaryContainerEl.classList.remove('hidden');
-            if (confirmBtn) confirmBtn.disabled = false;
-        };
-
-        window.handleCsvFileSelect = function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                window.processRawCsvText(evt.target.result);
-            };
-            reader.readAsText(file);
-        };
-
-        window.fetchCsvFromUrl = async function() {
-            // Deprecated / replaced by fetchDefaultGardenSheet
-        };
-
-        window.fetchDefaultGardenSheet = async function() {
-            const btnFetch = document.getElementById('btn-fetch-sheet');
-            const fetchLabel = document.getElementById('fetch-sheet-label');
-            const statusBox = document.getElementById('csv-loading-status');
-            const statusText = document.getElementById('csv-status-step-text');
-            const previewSummary = document.getElementById('csv-preview-summary');
-
-            // Toon statusbox en update knop naar laad-status
-            if (statusBox) statusBox.classList.remove('hidden');
-            if (previewSummary) previewSummary.classList.add('hidden');
-            if (btnFetch) btnFetch.disabled = true;
-
-            const updateStatus = (text) => {
-                if (statusText) statusText.innerText = text;
-            };
-
-            const rawUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQpPx2dcL_HkAnxs_PhSg582oFExs3fyQsFMsCZPzKG-NfYnuRYRiVNjEMGXDNesr1aYqTXBZvTn11I/pubhtml';
-            let csvUrl = rawUrl;
-            if (csvUrl.includes('/pubhtml')) {
-                csvUrl = csvUrl.replace('/pubhtml', '/pub?output=csv');
-            } else if (!csvUrl.includes('output=csv')) {
-                csvUrl = csvUrl.split('?')[0].replace(/\/+$/, '') + '/pub?output=csv';
-            }
-
-            try {
-                updateStatus('1/3: Verbinding maken met Google Sheet...');
-                await new Promise(r => setTimeout(r, 200));
-
-                updateStatus('2/3: Actuele CSV-gegevens ophalen...');
-                const cacheBustUrl = csvUrl + (csvUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
-                const response = await fetch(cacheBustUrl);
-                
-                if (!response.ok) throw new Error(`HTTP Fout ${response.status}`);
-
-                updateStatus('3/3: CSV-data ontleden & planten analyseren...');
-                const csvText = await response.text();
-                
-                window.processRawCsvText(csvText);
-
-                if (statusBox) statusBox.classList.add('hidden');
-            } catch (err) {
-                console.error("Fout bij ophalen Google Sheet:", err);
-                updateStatus('❌ Ophalen mislukt: Controleer je verbinding of Google Sheet link.');
-                if (statusBox) {
-                    statusBox.className = 'bg-red-50 border border-red-200 text-red-700 p-3 rounded-xl flex items-center space-x-3';
-                }
-            } finally {
-                if (btnFetch) btnFetch.disabled = false;
-            }
         };
 
         window.executeCsvImport = function() {
-            if (parsedCsvPlants.length === 0) return;
+            if (!parsedCsvPlants || parsedCsvPlants.length === 0) return;
 
             window.pushStateToUndo();
 
-            // Bewaar huidige posities en unieke instanties van bestaande planten per vak
-            const existingPlantPositions = new Map(); // plantName (lowercase) -> [{x, y, size, zoneName}]
-            window.zones.forEach(zone => {
-                (zone.plants || []).forEach(inst => {
-                    const def = window.allPlants.find(p => String(p.id) === String(inst.plantId));
-                    if (def) {
-                        const key = def.name.trim().toLowerCase();
-                        if (!existingPlantPositions.has(key)) {
-                            existingPlantPositions.set(key, []);
-                        }
-                        existingPlantPositions.get(key).push({
-                            x: inst.x,
-                            y: inst.y,
-                            size: inst.size || 26,
-                            zoneName: zone.name
-                        });
-                    }
-                });
-            });
+            const existingMap = new Map(window.allPlants.map(p => [p.name.toLowerCase().trim(), p]));
 
-            // Update de plantendatabase met de nieuw ingelezen planten, met behoud van bestaande ID's en handmatige foto's
-            window.allPlants = parsedCsvPlants.map(newPlant => {
-                const key = newPlant.name.trim().toLowerCase();
-                const oldPlant = window.allPlants.find(p => p.name.trim().toLowerCase() === key);
-                
-                if (oldPlant) {
-                    newPlant.id = oldPlant.id;
-                    if (!newPlant.image && oldPlant.image) {
-                        newPlant.image = oldPlant.image;
-                    }
+            parsedCsvPlants.forEach(newP => {
+                const key = newP.name.toLowerCase().trim();
+                const existing = existingMap.get(key);
+
+                if (existing) {
+                    // Update bestaande gegevens met behoud van unieke ID en huidige afbeelding indien nieuw ontbreekt
+                    existing.owned = newP.owned;
+                    existing.quantity = newP.quantity;
+                    existing.type = newP.type;
+                    existing.color = newP.color;
+                    existing.light = newP.light;
+                    existing.height = newP.height;
+                    existing.bloom = newP.bloom;
+                    existing.zones = newP.zones;
+                    existing.nursery = newP.nursery;
+                    existing.link = newP.link;
+                    existing.notes = newP.notes;
+                    if (newP.image) existing.image = newP.image;
+                } else {
+                    window.allPlants.push(newP);
                 }
-                return newPlant;
             });
 
             window.syncPlantsWithZones();
-
-            window.zones.forEach(zone => {
-                (zone.plants || []).forEach(inst => {
-                    const plantDef = window.allPlants.find(p => String(p.id) === String(inst.plantId));
-                    if (plantDef) {
-                        const key = plantDef.name.trim().toLowerCase();
-                        const savedPositions = existingPlantPositions.get(key);
-                        if (savedPositions && savedPositions.length > 0) {
-                            const matchInZone = savedPositions.find(sp => sp.zoneName.toLowerCase() === zone.name.toLowerCase());
-                            const posToUse = matchInZone || savedPositions[0];
-                            
-                            inst.x = posToUse.x;
-                            inst.y = posToUse.y;
-                            inst.size = posToUse.size;
-
-                            const idx = savedPositions.indexOf(posToUse);
-                            if (idx !== -1) savedPositions.splice(idx, 1);
-                        }
-                    }
-                });
-            });
-
             window.saveState();
             window.populateFilterDropdowns();
             window.filterPlants();
@@ -2135,138 +2121,70 @@
             window.closeCsvImportModal();
         };
 
-        // --- Export Function ---
-        window.exportGardenStudio = function() {
-            // Haal de volledige HTML-broncode van de huidige pagina op
-            const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Tuinbeplantingsplan_${new Date().toISOString().slice(0, 10)}.html`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        };
-
-        // --- App Lifecycle Initialization ---
-        window.addEventListener('DOMContentLoaded', async () => {
+        // Standard App Initialization
+        window.addEventListener('DOMContentLoaded', () => {
             window.setupGlobalMouseEvents();
-            window.updateCanvasTransform();
 
-            // Direct event delegation luisteraar voor alle kliks op tuinvakken
-            const canvasContainer = document.getElementById('canvas-content-container');
-            if (canvasContainer) {
-                canvasContainer.addEventListener('mousedown', (e) => {
-                    if (e.target.closest('.plant-dot') || e.target.closest('button') || (!window.isReadMode && e.target.closest('.bg-white\\/95'))) return;
-                    const zoneBox = e.target.closest('.garden-zone-box');
-                    if (zoneBox) {
-                        const zoneId = zoneBox.getAttribute('data-zone-id');
-                        if (zoneId) {
-                            window.selectZone(zoneId);
-                        }
-                    }
-                });
-            }
-
-            // Initialiseer knop uiterlijk direct voor leesmodus
-            window.isReadMode = true;
-            const modeText = document.getElementById('mode-text');
-            const modeIcon = document.getElementById('mode-icon');
-            const modeToggleBtn = document.getElementById('btn-mode-toggle');
-            if (modeText) modeText.innerText = 'Leesmodus';
-            if (modeIcon) {
-                modeIcon.setAttribute('data-lucide', 'eye');
-                modeIcon.style.color = '#348b5e';
-            }
-            if (modeToggleBtn) {
-                modeToggleBtn.className = 'px-3 py-1.5 bg-botanic-50 hover:bg-botanic-100 text-botanic-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-botanic-200';
-            }
-
-            // Keyboard Shortcuts voor Undo/Redo
-            window.addEventListener('keydown', (e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-                    if (e.shiftKey) {
-                        e.preventDefault();
-                        window.redo();
-                    } else {
-                        e.preventDefault();
-                        window.undo();
-                    }
-                } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-                    e.preventDefault();
-                    window.redo();
-                }
-            });
-
-            const btnUndo = document.getElementById('btn-undo');
-            const btnRedo = document.getElementById('btn-redo');
-            if (btnUndo) btnUndo.addEventListener('click', () => window.undo());
-            if (btnRedo) btnRedo.addEventListener('click', () => window.redo());
-
-            // Firebase Initialization
             try {
                 const app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                await signInAnonymously(auth);
-                isCloudConnected = true;
-                window.updateCloudStatus('synced', 'Verbonden');
+                signInAnonymously(auth).then(() => {
+                    const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
+                    onSnapshot(stateDocRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            const data = docSnap.data();
+                            if (data.allPlants) window.allPlants = data.allPlants;
+                            if (data.zones) window.zones = data.zones;
+                            if (data.isSidebarCollapsed !== undefined) window.isSidebarCollapsed = data.isSidebarCollapsed;
+                            if (data.bloomMonth !== undefined) window.currentBloomMonthIndex = data.bloomMonth;
+                            if (data.isReadMode !== undefined) window.isReadMode = data.isReadMode;
+                            if (data.areFiltersCollapsed !== undefined) window.areFiltersCollapsed = data.areFiltersCollapsed;
 
-                const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
-                onSnapshot(stateDocRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        window.allPlants = data.allPlants || [];
-                        window.zones = data.zones || [];
-                        if (data.isSidebarCollapsed !== undefined) window.isSidebarCollapsed = data.isSidebarCollapsed;
-                        if (data.bloomMonth !== undefined) window.currentBloomMonthIndex = data.bloomMonth;
-                        if (data.isReadMode !== undefined) window.isReadMode = data.isReadMode;
-                        if (data.areFiltersCollapsed !== undefined) window.areFiltersCollapsed = data.areFiltersCollapsed;
-
-                        window.updateSidebarUI();
-                        window.syncPlantsWithZones();
-                        window.populateFilterDropdowns();
-                        
-                        // Herstel inklapbare filters UI status
-                        const filterContainer = document.getElementById('filter-options-container');
-                        const filterChevronIcon = document.getElementById('filter-chevron-icon');
-                        if (filterContainer) {
-                            if (window.areFiltersCollapsed) {
-                                filterContainer.classList.add('hidden');
-                                if (filterChevronIcon) filterChevronIcon.setAttribute('data-lucide', 'chevron-right');
-                            } else {
-                                filterContainer.classList.remove('hidden');
-                                if (filterChevronIcon) filterChevronIcon.setAttribute('data-lucide', 'chevron-down');
-                            }
+                            isCloudConnected = true;
+                            window.updateCloudStatus('synced', 'Verbonden');
+                        } else {
+                            isCloudConnected = true;
+                            window.updateCloudStatus('synced', 'Verbonden');
+                            window.saveState();
                         }
 
-                        window.filterPlants();
-                        window.renderReserveList();
-                        window.renderDesignerCanvas();
-                    } else {
-                        // Geen data in cloud: start met een schone lege staat
-                        window.allPlants = [];
-                        window.zones = [];
-                        window.saveState();
+                        window.syncPlantsWithZones();
+                        window.updateSidebarUI();
                         window.populateFilterDropdowns();
                         window.filterPlants();
                         window.renderReserveList();
                         window.renderDesignerCanvas();
-                    }
-                }, (error) => {
-                    console.warn("Firestore luisteraar waarschuwing:", error);
-                    window.updateCloudStatus('error', 'Lokaal');
+                    }, (err) => {
+                        console.warn("Firestore listener warning:", err);
+                        isCloudConnected = false;
+                        window.updateCloudStatus('local', 'Lokaal');
+                        window.syncPlantsWithZones();
+                        window.populateFilterDropdowns();
+                        window.filterPlants();
+                        window.renderReserveList();
+                        window.renderDesignerCanvas();
+                    });
+                }).catch(() => {
+                    isCloudConnected = false;
+                    window.updateCloudStatus('local', 'Lokaal');
+                    window.syncPlantsWithZones();
+                    window.populateFilterDropdowns();
+                    window.filterPlants();
+                    window.renderReserveList();
+                    window.renderDesignerCanvas();
                 });
-            } catch (e) {
-                console.warn("Firebase initialisatie mislukt:", e);
-                window.updateCloudStatus('error', 'Lokaal');
+            } catch (err) {
+                console.warn("Firebase Init fallback naar lokaal:", err);
+                isCloudConnected = false;
+                window.updateCloudStatus('local', 'Lokaal');
+                window.syncPlantsWithZones();
+                window.populateFilterDropdowns();
+                window.filterPlants();
+                window.renderReserveList();
+                window.renderDesignerCanvas();
             }
-
-            if (window.lucide) lucide.createIcons();
         });
     </script>
 </body>
