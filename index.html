@@ -151,15 +151,28 @@
             </div>
 
             <!-- Bloeislider / Bloeikalender Component -->
-            <div class="flex items-center space-x-2 bg-pink-50/90 border border-pink-200 px-3 py-1 rounded-xl text-xs flex-shrink-0 shadow-sm">
-                <div class="flex items-center space-x-1 font-bold text-pink-700 min-w-[75px]">
-                    <i data-lucide="flower-2" class="w-3.5 h-3.5 text-pink-500 flex-shrink-0"></i>
-                    <span id="bloom-month-label" class="capitalize">Alle</span>
+            <div class="flex flex-col space-y-1 bg-pink-50/90 border border-pink-200 px-3 py-1.5 rounded-xl text-xs flex-shrink-0 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-1 font-bold text-pink-700">
+                        <i data-lucide="flower-2" class="w-3.5 h-3.5 text-pink-500 flex-shrink-0"></i>
+                        <span>Bloeiperiode</span>
+                    </div>
+                    <div class="flex items-center space-x-1.5">
+                        <button id="btn-bloom-play" onclick="window.toggleBloomPlay()" class="w-5 h-5 bg-pink-200 hover:bg-pink-300 text-pink-800 rounded-full flex items-center justify-center transition shadow-sm" title="Speel bloeikalender af">
+                            <i id="bloom-play-icon" data-lucide="play" class="w-3 h-3"></i>
+                        </button>
+                        <span id="bloom-count-badge" class="bg-pink-200 text-pink-800 font-bold px-1.5 py-0.5 rounded-md text-[10px] hidden">0</span>
+                    </div>
                 </div>
-                <input type="range" id="bloom-month-slider" min="0" max="12" value="0" step="1" 
-                       oninput="window.handleBloomSliderInput(this.value)"
-                       class="w-24 sm:w-32 accent-pink-600 cursor-pointer h-1.5 bg-pink-200 rounded-lg">
-                <span id="bloom-count-badge" class="bg-pink-200 text-pink-800 font-bold px-1.5 py-0.5 rounded-md text-[10px] hidden">0</span>
+                <div class="flex flex-col space-y-0.5">
+                    <input type="range" id="bloom-month-slider" min="0" max="12" value="0" step="1" 
+                           oninput="window.handleBloomSliderInput(this.value)"
+                           class="w-36 sm:w-48 accent-pink-600 cursor-pointer h-1.5 bg-pink-200 rounded-lg">
+                    <div class="flex justify-between text-[9px] text-pink-700 font-medium px-0.5">
+                        <span id="bloom-month-label" class="capitalize font-bold">Alle</span>
+                        <span>Dec</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Leesmodus / Bewerkmodus Schakelaar -->
@@ -469,6 +482,48 @@
 
         window.bloomMonths = ['Alle', 'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
         window.selectedBloomMonthIndex = 0;
+        window.bloomPlayInterval = null;
+
+        window.toggleBloomPlay = function() {
+            const btn = document.getElementById('btn-bloom-play');
+            const icon = document.getElementById('bloom-play-icon');
+            const slider = document.getElementById('bloom-month-slider');
+
+            if (window.bloomPlayInterval) {
+                // Pauzeren
+                clearInterval(window.bloomPlayInterval);
+                window.bloomPlayInterval = null;
+                if (icon) icon.setAttribute('data-lucide', 'play');
+                if (btn) btn.title = "Speel bloeikalender af";
+            } else {
+                // Afspelen
+                if (icon) icon.setAttribute('data-lucide', 'pause');
+                if (btn) btn.title = "Pauzeer bloeikalender";
+
+                window.bloomPlayInterval = setInterval(() => {
+                    let nextVal = window.selectedBloomMonthIndex + 1;
+                    if (nextVal > 12) {
+                        nextVal = 1; // Herhaal vanaf Januari
+                    }
+                    if (slider) {
+                        slider.value = nextVal;
+                        window.handleBloomSliderInput(nextVal);
+                    }
+                }, 1000);
+            }
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.togglePlantOrdered = function(plantId, event) {
+            if (event) event.stopPropagation();
+            window.pushStateToUndo();
+            const plant = window.allPlants.find(p => String(p.id) === String(plantId));
+            if (plant) {
+                plant.ordered = !plant.ordered;
+                window.saveState();
+                window.renderReserveList();
+            }
+        };
 
         window.isPlantInBloom = function(plant, monthIndex) {
             if (!monthIndex || monthIndex === 0 || !plant || !plant.bloom) return false;
@@ -518,6 +573,11 @@
         window.handleBloomSliderInput = function(val) {
             window.selectedBloomMonthIndex = parseInt(val, 10);
             
+            const sliderEl = document.getElementById('bloom-month-slider');
+            if (sliderEl && sliderEl.value !== String(window.selectedBloomMonthIndex)) {
+                sliderEl.value = window.selectedBloomMonthIndex;
+            }
+
             const labelEl = document.getElementById('bloom-month-label');
             const badgeEl = document.getElementById('bloom-count-badge');
             
@@ -622,11 +682,12 @@
         };
 
         window.getPlantImageUrl = function(plant) {
-            if (plant.image && plant.image.startsWith('http')) {
+            if (plant.image && typeof plant.image === 'string' && plant.image.startsWith('http')) {
                 return plant.image;
             }
-            if (plant.link && plant.link.startsWith('http') && !plant.link.includes('google.com')) {
-                return plant.link;
+            if (plant.link && typeof plant.link === 'string' && plant.link.startsWith('http') && !plant.link.includes('google.com')) {
+                const isDirectImageLink = /\.(jpg|jpeg|png|webp|avif|gif)(\?.*)?$/i.test(plant.link);
+                if (isDirectImageLink) return plant.link;
             }
             return 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&w=400&q=80';
         };
@@ -797,7 +858,6 @@
             URL.revokeObjectURL(url);
         };
 
-        // --- Volledige Kolom A t/m N (index 0 t/m 13) Ondersteuning ---
         window.fetchDefaultGardenSheet = function() {
             const statusEl = document.getElementById('csv-loading-status');
             const summaryEl = document.getElementById('csv-preview-summary');
@@ -815,27 +875,32 @@
                     if (results && results.data && results.data.length > 0) {
                         parsedCsvPlants = results.data.map((row, idx) => {
                             const vals = Object.values(row);
+                            const imgCandidate = row.image || row.Afbeelding || row.Foto || vals[13] || '';
+                            const isImgUrl = typeof imgCandidate === 'string' && (imgCandidate.startsWith('http://') || imgCandidate.startsWith('https://'));
+
                             return {
                                 id: row.id || row.Id || vals[0] || 'csv-' + idx + '-' + Date.now(),
                                 name: row.name || row.Naam || row.Plantnaam || vals[1] || 'Onbekende Plant',
-                                type: row.type || row.Type || vals[2] || 'Vaste plant',
+                                droog: row.droog || row.Droog || vals[2] || '', 
+                                type: row.type || row.Type || vals[3] || 'Vaste plant',
                                 color: row.color || row.Kleur || row.Bloemkleur || vals[3] || 'groen',
                                 light: row.light || row.Standplaats || vals[4] || 'Halfschaduw / Schaduw',
                                 height: row.height || row.Hoogte || vals[5] || '',
                                 bloom: row.bloom || row.Bloeitijd || vals[6] || '',
-                                zones: row.zones || row.Vakken || row.Vak || vals[7] || '',
+                                zones: vals[11] || '', // Uitsluitend Kolom L (index 11) voor vakken
                                 nursery: row.nursery || row.Kweker || vals[8] || '',
-                                link: row.link || row.Link || vals[9] || '',
+                                link: row.link || row.Link || vals[9] || vals[12] || '',
                                 notes: row.notes || row.Opmerkingen || vals[10] || '',
-                                owned: row.owned || row.HebIk || vals[11] || 'ja',
+                                owned: row.owned || row.HebIk || vals[10] || 'ja',
                                 quantity: row.quantity || row.Aantal || vals[12] || '1',
-                                extraInfo: row.extraInfo || vals[13] || ''
+                                image: isImgUrl ? imgCandidate.trim() : (row.image || ''),
+                                extraInfo: !isImgUrl ? (row.extraInfo || imgCandidate || '') : ''
                             };
                         }).filter(p => p.name && p.name !== 'Onbekende Plant');
 
                         if (summaryEl) {
                             summaryEl.classList.remove('hidden');
-                            document.getElementById('csv-preview-count').innerText = `${parsedCsvPlants.length} planten succesvol geladen (kolommen A t/m N gebruikt).`;
+                            document.getElementById('csv-preview-count').innerText = `${parsedCsvPlants.length} planten succesvol geladen.`;
                         }
                         if (confirmBtn) confirmBtn.disabled = false;
                     } else {
@@ -1180,61 +1245,62 @@
             });
 
             window.addEventListener('mouseup', (e) => {
-                if (window.dragType === 'catalog-item') {
-                    if (catalogDragGhost) {
-                        catalogDragGhost.remove();
-                        catalogDragGhost = null;
-                    }
-
-                    const distMoved = Math.hypot(e.clientX - window.dragStartX, e.clientY - window.dragStartY);
-                    if (distMoved > 5 && activeCatalogDragPlant) {
-                        window.pushStateToUndo();
-                        const canvasMouseX = (e.clientX - window.panX) / window.scale;
-                        const canvasMouseY = (e.clientY - window.panY) / window.scale;
-
-                        const targetZone = window.zones.find(z => 
-                            canvasMouseX >= z.x && 
-                            canvasMouseX <= z.x + z.w && 
-                            canvasMouseY >= z.y && 
-                            canvasMouseY <= z.y + z.h
-                        );
-
-                        if (targetZone) {
-                            activeCatalogDragPlant.owned = 'ja';
-                            let currentZones = (activeCatalogDragPlant.zones || '').split(',').map(s => s.trim()).filter(Boolean);
-                            currentZones = currentZones.filter(zName => zName.toLowerCase() !== 'reservelijst');
-                            if (!currentZones.some(zName => zName.toLowerCase() === targetZone.name.toLowerCase())) {
-                                currentZones.push(targetZone.name);
-                            }
-                            activeCatalogDragPlant.zones = currentZones.join(', ');
-
-                            const existingInstance = targetZone.plants.find(p => String(p.plantId) === String(activeCatalogDragPlant.id));
-                            if (!existingInstance) {
-                                targetZone.plants.push({
-                                    instanceId: 'inst-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
-                                    plantId: activeCatalogDragPlant.id,
-                                    plantName: activeCatalogDragPlant.name,
-                                    x: Math.max(25, Math.min(canvasMouseX - targetZone.x, targetZone.w - 25)),
-                                    y: Math.max(25, Math.min(canvasMouseY - targetZone.y, targetZone.h - 25)),
-                                    size: 26
-                                });
-                            }
-
-                            window.syncPlantsWithZones();
-                            window.saveState();
-                            window.populateFilterDropdowns();
-                            window.filterPlants();
-                            window.renderReserveList();
-                            window.renderDesignerCanvas();
-                        }
-                    }
-
-                    activeCatalogDragPlant = null;
-                    window.dragType = null;
-                    return;
+            if (window.dragType === 'catalog-item') {
+                if (catalogDragGhost) {
+                    catalogDragGhost.remove();
+                    catalogDragGhost = null;
                 }
 
-                if (window.dragType === 'plant') {
+                const distMoved = Math.hypot(e.clientX - window.dragStartX, e.clientY - window.dragStartY);
+                if (distMoved > 5 && activeCatalogDragPlant) {
+                    window.pushStateToUndo();
+                    const canvasMouseX = (e.clientX - window.panX) / window.scale;
+                    const canvasMouseY = (e.clientY - window.panY) / window.scale;
+
+                    const targetZone = window.zones.find(z => 
+                        canvasMouseX >= z.x && 
+                        canvasMouseX <= z.x + z.w && 
+                        canvasMouseY >= z.y && 
+                        canvasMouseY <= z.y + z.h
+                    );
+
+                    if (targetZone) {
+                        // Zorg dat de plant op de tuinkaart gezet wordt, maar behoud de status of geef expliciet aan indien gewenst
+                        // Hier koppelen we het vak aan kolom L van de plant
+                        let currentZones = (activeCatalogDragPlant.zones || '').split(',').map(s => s.trim()).filter(Boolean);
+                        currentZones = currentZones.filter(zName => zName.toLowerCase() !== 'reservelijst');
+                        if (!currentZones.some(zName => zName.toLowerCase() === targetZone.name.toLowerCase())) {
+                            currentZones.push(targetZone.name);
+                        }
+                        activeCatalogDragPlant.zones = currentZones.join(', ');
+
+                        const existingInstance = targetZone.plants.find(p => String(p.plantId) === String(activeCatalogDragPlant.id));
+                        if (!existingInstance) {
+                            targetZone.plants.push({
+                                instanceId: 'inst-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+                                plantId: activeCatalogDragPlant.id,
+                                plantName: activeCatalogDragPlant.name,
+                                x: Math.max(25, Math.min(canvasMouseX - targetZone.x, targetZone.w - 25)),
+                                y: Math.max(25, Math.min(canvasMouseY - targetZone.y, targetZone.h - 25)),
+                                size: 26
+                            });
+                        }
+
+                        window.syncPlantsWithZones();
+                        window.saveState();
+                        window.populateFilterDropdowns();
+                        window.filterPlants();
+                        window.renderReserveList();
+                        window.renderDesignerCanvas();
+                    }
+                }
+
+                activeCatalogDragPlant = null;
+                window.dragType = null;
+                return;
+            }
+
+            if (window.dragType === 'plant') {
                     const distMoved = Math.hypot(e.clientX - window.dragStartX, e.clientY - window.dragStartY);
                     const { zoneId, instanceId } = window.dragTarget;
                     const zone = window.zones.find(z => z.id === zoneId);
@@ -1261,6 +1327,9 @@
             let requiredZoneNames = new Set();
             
             window.allPlants.forEach(plant => {
+                const isNotOwned = (plant.owned || 'ja').toLowerCase() === 'nee';
+                if (isNotOwned) return; // Planten met "Nee" in kolom K horen niet op het canvas
+
                 let rawZones = plant.zones || '';
                 let zoneNamesList = rawZones.split(',').map(z => z.trim()).filter(z => z && z.toLowerCase() !== 'reservelijst');
                 zoneNamesList.forEach(zName => requiredZoneNames.add(zName));
@@ -1408,9 +1477,10 @@
             }
 
             const filtered = window.allPlants.filter(p => {
-                const isReserve = (p.zones || '').toLowerCase().includes('reservelijst');
+                const isReserve = (p.owned || 'ja').toLowerCase() === 'nee' || (p.zones || '').toLowerCase().includes('reservelijst');
                 
                 if (isReserve && ownedVal !== 'nee') return false;
+                if (!isReserve && ownedVal === 'nee') return false;
 
                 if (selectedZone) {
                     const isPlantInstanceInZone = selectedZone.plants && selectedZone.plants.some(pInst => String(pInst.plantId) === String(p.id));
@@ -1437,10 +1507,12 @@
                 return matchesQuery && matchesType && matchesColor && matchesLight && matchesOwned && matchesNursery;
             });
 
-            if (countEl) countEl.innerText = `Resultaten: ${filtered.length} planten`;
+            if (countEl) {
+                countEl.innerText = `${filtered.length} planten getoond`;
+            }
 
             if (filtered.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Geen planten gevonden voor deze filters.</p>`;
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Geen planten gevonden.</p>`;
                 return;
             }
 
@@ -1450,7 +1522,7 @@
 
                 const actionButtonsHtml = window.isReadMode ? '' : `
                     <div class="flex items-center space-x-1 flex-shrink-0" onmousedown="event.stopPropagation()">
-                        <button onclick="window.deletePlantDefinition('${plant.id}')" class="p-1 hover:bg-red-50 rounded text-red-500 hover:text-red-700 transition" title="Verwijderen">
+                        <button onclick="window.deletePlantDefinition('${plant.id}')" class="p-1 hover:bg-red-100 rounded text-red-500 hover:text-red-700 transition" title="Verwijderen">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         </button>
                     </div>
@@ -1482,7 +1554,7 @@
             if (!container) return;
 
             const reservePlants = window.allPlants.filter(p => {
-                const isReserve = (p.zones || '').toLowerCase().includes('reservelijst');
+                const isReserve = (p.owned || 'ja').toLowerCase() === 'nee' || (p.zones || '').toLowerCase().includes('reservelijst');
                 const matchesQuery = p.name.toLowerCase().includes(query) || p.type.toLowerCase().includes(query) || (p.nursery && p.nursery.toLowerCase().includes(query));
                 return isReserve && matchesQuery;
             });
@@ -1490,13 +1562,14 @@
             if (countBadge) countBadge.innerText = reservePlants.length;
 
             if (reservePlants.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Geen planten op de reservelijst.</p>`;
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Geen planten op de boodschappenlijst.</p>`;
                 return;
             }
 
             container.innerHTML = reservePlants.map(plant => {
                 const colStyle = window.getPlantColorStyle(plant.color);
                 const nurseryTag = plant.nursery ? ` • Kweker: ${plant.nursery}` : '';
+                const isOrdered = plant.ordered === true;
 
                 const actionButtonsHtml = window.isReadMode ? '' : `
                     <div class="flex items-center space-x-1 flex-shrink-0" onmousedown="event.stopPropagation()">
@@ -1507,13 +1580,16 @@
                 `;
 
                 return `
-                    <div class="border border-amber-200 bg-amber-50/40 hover:border-amber-400 hover:bg-amber-50 rounded-xl p-2.5 transition flex items-center justify-between group ${window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}"
+                    <div class="border ${isOrdered ? 'border-emerald-300 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/40'} hover:border-amber-400 rounded-xl p-2.5 transition flex items-center justify-between group ${window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}"
                          ${window.isReadMode ? `onclick="window.openPlantDetail('${plant.id}')"` : `onmousedown="window.initCatalogDrag(event, '${plant.id}')"`}>
                         <div class="flex items-center space-x-2.5 truncate" onclick="if(${window.isReadMode} || Math.hypot(event.clientX - window.dragStartX, event.clientY - window.dragStartY) < 5) window.openPlantDetail('${plant.id}')">
-                            <div class="w-4 h-4 rounded-full flex-shrink-0 border shadow-sm" style="background-color: ${colStyle.bg}; border-color: ${colStyle.border};"></div>
+                            <button onclick="window.togglePlantOrdered('${plant.id}', event)" class="w-5 h-5 rounded-lg border ${isOrdered ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-300 hover:border-amber-500'} flex items-center justify-center transition flex-shrink-0 shadow-sm" title="${isOrdered ? 'Besteld / Gekocht (klik om ongedaan te maken)' : 'Zet vinkje als besteld'}">
+                                ${isOrdered ? '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+                            </button>
+                            <div class="w-3.5 h-3.5 rounded-full flex-shrink-0 border shadow-sm" style="background-color: ${colStyle.bg}; border-color: ${colStyle.border};"></div>
                             <div class="truncate">
-                                <p class="font-bold text-slate-800 text-xs truncate">${plant.name}</p>
-                                <p class="text-[10px] text-amber-800/80 truncate">${plant.type} ${nurseryTag}</p>
+                                <p class="font-bold ${isOrdered ? 'line-through text-slate-500' : 'text-slate-800'} text-xs truncate">${plant.name}</p>
+                                <p class="text-[10px] ${isOrdered ? 'text-emerald-700 font-medium' : 'text-amber-800/80'} truncate">${isOrdered ? '✓ Besteld/Gekocht' : (plant.type + nurseryTag)}</p>
                             </div>
                         </div>
                         ${actionButtonsHtml}
@@ -1565,9 +1641,10 @@
                     const bloomGlowClass = inBloom ? 'ring-4 ring-pink-500 animate-pulse scale-125 z-40' : '';
                     const bloomBadge = inBloom ? `<span class="absolute -bottom-1 -right-1 bg-pink-600 text-white rounded-full w-4 h-4 text-[9px] flex items-center justify-center shadow-md z-30 pointer-events-none">🌸</span>` : '';
 
-                    const isNotOwned = (plantData.owned || 'ja').toLowerCase() === 'nee';
-                    const borderStyle = isNotOwned ? 'border-dashed border-2 opacity-80' : 'border-2';
-                    const ownedBadge = isNotOwned ? `<span class="absolute -top-1 -right-1 bg-amber-500 text-white rounded-full w-3.5 h-3.5 text-[8px] flex items-center justify-center shadow-sm pointer-events-none">🛒</span>` : '';
+                    // Controleer of de plant nog gekocht moet worden (kolom K is "nee", of de plant komt van de reservelijst)
+                    const isNotOwned = (plantData.owned || 'ja').toLowerCase() === 'nee' || (plantData.zones || '').toLowerCase().includes('reservelijst');
+                    const borderStyle = isNotOwned ? 'border-dashed border-2 opacity-95' : 'border-2';
+                    const ownedBadge = isNotOwned ? `<span class="absolute -top-1.5 -right-1.5 bg-amber-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center shadow-md pointer-events-none z-30" title="Moet nog gekocht worden"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>` : '';
 
                     const plantCursorClass = window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing';
                     const plantMouseDownAttr = `onmousedown="window.initPlantDrag(event, '${zone.id}', '${plantInst.instanceId}')" onclick="event.stopPropagation(); window.openPlantDetail('${plantData.id}', '${zone.id}', '${plantInst.instanceId}')"`;
@@ -1575,10 +1652,10 @@
                     html += `
                         <div class="plant-dot absolute group ${plantCursorClass} ${bloomGlowClass} rounded-full flex items-center justify-center transition-transform hover:scale-125 z-10 hover:z-50 pointer-events-auto"
                              style="left: ${plantInst.x - size/2}px; top: ${plantInst.y - size/2}px; width: ${size}px; height: ${size}px;"
-                             ${plantMouseDownAttr}>
+                             onmousedown="window.initPlantDrag(event, '${zone.id}', '${plantInst.instanceId}')" onclick="event.stopPropagation(); window.openPlantDetail('${plantData.id}', '${zone.id}', '${plantInst.instanceId}')">
                              
                             <div class="w-full h-full rounded-full shadow-md flex items-center justify-center text-[10px] font-bold transition pointer-events-none ${borderStyle}"
-                                 style="background-color: ${colStyle.bg}; color: ${colStyle.text}; border-color: ${isNotOwned ? '#f59e0b' : colStyle.border};">
+                                 style="background-color: ${colStyle.bg}; color: ${colStyle.text}; border-color: ${isNotOwned ? '#b45309' : colStyle.border};">
                                 •
                             </div>
                             ${ownedBadge}
@@ -1648,10 +1725,10 @@
                 });
             }
 
-            const nurseryHtml = plant.nursery ? `<p class="text-xs text-slate-700"><strong>Kweker / Waar te koop:</strong> ${plant.nursery}</p>` : '';
+            const nurseryHtml = plant.nursery ? `<p class="text-xs text-slate-700"><strong>Bijzonderheden:</strong> ${plant.nursery}</p>` : '';
             const linkHtml = plant.link ? `<p class="text-xs text-slate-700"><strong>Link:</strong> <a href="${plant.link}" target="_blank" rel="noopener noreferrer" class="text-emerald-700 underline font-semibold hover:text-emerald-800 break-all">${plant.link}</a></p>` : '';
-            const notesHtml = plant.notes ? `<p class="text-xs text-slate-700"><strong>Opmerkingen:</strong> ${plant.notes}</p>` : '';
             const extraHtml = plant.extraInfo ? `<p class="text-xs text-slate-700"><strong>Extra Info:</strong> ${plant.extraInfo}</p>` : '';
+            const droogVal = plant.droog || ''; 
 
             contentEl.innerHTML = `
                 <div class="space-y-3">
@@ -1661,16 +1738,14 @@
 
                     <div class="bg-botanic-50 p-3 rounded-xl border border-botanic-100 space-y-1.5">
                         <p class="text-[11px] text-botanic-800 font-semibold">Plant Specificaties</p>
-                        <p class="text-xs text-slate-700"><strong>Heb ik?:</strong> <span class="capitalize font-semibold ${plant.owned === 'nee' ? 'text-amber-700' : 'text-emerald-700'}">${plant.owned || 'ja'}</span> (Aantal: ${plant.quantity || 1})</p>
-                        <p class="text-xs text-slate-700"><strong>Type:</strong> ${plant.type}</p>
                         <p class="text-xs text-slate-700"><strong>Bloemkleur:</strong> <span class="capitalize">${plant.color}</span></p>
                         <p class="text-xs text-slate-700"><strong>Standplaats:</strong> ${plant.light}</p>
+                        <p class="text-xs text-slate-700"><strong>Droog?:</strong> ${droogVal}</p>
                         <p class="text-xs text-slate-700"><strong>Hoogte:</strong> ${plant.height}</p>
                         <p class="text-xs text-slate-700"><strong>Bloeitijd:</strong> ${plant.bloom}</p>
                         <p class="text-xs text-slate-700"><strong>Toegewezen Vakken:</strong> ${plant.zones}</p>
                         ${nurseryHtml}
                         ${linkHtml}
-                        ${notesHtml}
                         ${extraHtml}
                     </div>
                 </div>
@@ -1693,7 +1768,7 @@
                 `;
             } else {
                 window.activeModalPlantInstance = null;
-                sizeContainerEl.innerHTML = `<span class="text-slate-400 italic text-center">${window.isReadMode ? 'Leesmodus actief (alleen-lezen)' : 'Selecteer plant op kaart om grootte aan te passen'}</span>`;
+                sizeContainerEl.innerHTML = `<span class="text-slate-400 italic text-center">${window.isReadMode ? 'Schakel over naar bewerkmodus om de plantgrootte aan te passen' : 'Open een plant vanaf de tuinkaart om de grootte aan te passen'}</span>`;
             }
 
             const modal = document.getElementById('plant-detail-modal');
@@ -1800,6 +1875,12 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             window.setupGlobalMouseEvents();
+
+            // Koppel de event listeners expliciet aan de undo/redo knoppen
+            const btnUndo = document.getElementById('btn-undo');
+            const btnRedo = document.getElementById('btn-redo');
+            if (btnUndo) btnUndo.onclick = window.undo;
+            if (btnRedo) btnRedo.onclick = window.redo;
 
             try {
                 const app = initializeApp(firebaseConfig);
