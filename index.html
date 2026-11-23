@@ -150,6 +150,12 @@
                 <span id="cloud-status-text">Verbinden...</span>
             </div>
 
+            <!-- Google Inlog / Uitlog Knop -->
+            <button id="btn-google-auth" onclick="window.handleGoogleAuthClick()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200 flex-shrink-0 whitespace-nowrap" title="Inloggen met Google">
+                <i id="google-auth-icon" data-lucide="log-in" class="w-3.5 h-3.5 text-botanic-700"></i>
+                <span id="google-auth-text">Inloggen</span>
+            </button>
+
             <!-- Bloeislider / Bloeikalender Component -->
             <div class="flex flex-col space-y-1 bg-pink-50/90 border border-pink-200 px-3 py-1.5 rounded-xl text-xs flex-shrink-0 shadow-sm">
                 <div class="flex items-center justify-between">
@@ -177,8 +183,8 @@
 
             <!-- Leesmodus / Bewerkmodus Schakelaar -->
             <button id="btn-mode-toggle" onclick="window.toggleAppMode()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200 flex-shrink-0 whitespace-nowrap" title="Wissel tussen bewerk- en leesmodus">
-                <i id="mode-icon" data-lucide="edit-3" class="w-3.5 h-3.5 text-botanic-700"></i>
-                <span id="mode-text">Bewerken</span>
+                <i id="mode-icon" data-lucide="eye" class="w-3.5 h-3.5 text-botanic-700"></i>
+                <span id="mode-text">Leesmodus</span>
             </button>
 
             <!-- Undo / Redo Buttons -->
@@ -276,7 +282,7 @@
                             <span>Filters</span>
                         </button>
                         <div class="flex items-center space-x-1">
-                            <button onclick="window.openCsvImportModal()" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-medium transition flex items-center space-x-1">
+                            <button id="btn-open-sheet" onclick="window.openCsvImportModal()" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-medium transition flex items-center space-x-1">
                                 <i data-lucide="upload" class="w-3 h-3 text-emerald-700"></i>
                                 <span>Sheet</span>
                             </button>
@@ -454,10 +460,31 @@
         </div>
     </div>
 
+    <!-- Custom Notification Modal (ter vervanging van alert()) -->
+    <div id="info-notice-modal" class="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[10000] hidden flex items-center justify-center p-4" onclick="if(event.target.id==='info-notice-modal') window.closeInfoNotice();">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-5 border border-slate-200 space-y-4 text-xs">
+            <div class="flex items-center space-x-3 text-amber-600">
+                <div class="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 id="info-notice-title" class="font-bold text-slate-800 text-sm">Melding</h3>
+                    <p class="text-[11px] text-slate-500">Toegang & Beveiliging</p>
+                </div>
+            </div>
+            <p id="info-notice-message" class="text-slate-600 leading-relaxed"></p>
+            <div class="flex items-center justify-end pt-2 border-t border-slate-100">
+                <button onclick="window.closeInfoNotice()" class="px-4 py-2 bg-botanic-700 hover:bg-botanic-800 text-white font-medium rounded-xl transition shadow-sm">
+                    Begrepen
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Application Script Module -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -470,6 +497,8 @@
             measurementId: "G-GVBR3XRBWR"
         };
 
+        const AUTHORIZED_EMAIL = 'ijszee@gmail.com';
+
         window.allPlants = [];
         window.zones = [];
         window.isSidebarCollapsed = false;
@@ -479,6 +508,108 @@
         window.activeModalPlantInstance = null;
         window.isReadMode = true;
         window.areFiltersCollapsed = false;
+
+        window.showInfoNotice = function(title, message) {
+            const modal = document.getElementById('info-notice-modal');
+            const titleEl = document.getElementById('info-notice-title');
+            const msgEl = document.getElementById('info-notice-message');
+            if (titleEl) titleEl.innerText = title || 'Melding';
+            if (msgEl) msgEl.innerText = message || '';
+            if (modal) modal.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.closeInfoNotice = function() {
+            const modal = document.getElementById('info-notice-modal');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        window.isAuthorizedEditor = function() {
+            return !!(auth && auth.currentUser && auth.currentUser.email && auth.currentUser.email.toLowerCase() === AUTHORIZED_EMAIL);
+        };
+
+        window.updateAuthUI = function(user) {
+            const btn = document.getElementById('btn-google-auth');
+            const icon = document.getElementById('google-auth-icon');
+            const text = document.getElementById('google-auth-text');
+            const modeToggleBtn = document.getElementById('btn-mode-toggle');
+            const undoRedoGroup = document.getElementById('undo-redo-group');
+            const sheetBtn = document.getElementById('btn-open-sheet');
+
+            if (btn && icon && text) {
+                if (user) {
+                    const emailLabel = user.email || 'Ingelogd';
+                    text.innerText = `${emailLabel} • Uitloggen`;
+                    icon.setAttribute('data-lucide', 'log-out');
+                    btn.title = `Ingelogd als ${emailLabel}. Klik om uit te loggen.`;
+                    if (window.isAuthorizedEditor()) {
+                        btn.className = 'px-3 py-1.5 bg-botanic-50 hover:bg-botanic-100 text-botanic-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-botanic-200 flex-shrink-0 whitespace-nowrap';
+                    } else {
+                        btn.className = 'px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-amber-200 flex-shrink-0 whitespace-nowrap';
+                    }
+                } else {
+                    text.innerText = 'Inloggen';
+                    icon.setAttribute('data-lucide', 'log-in');
+                    btn.title = 'Inloggen met Google om te kunnen bewerken';
+                    btn.className = 'px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200 flex-shrink-0 whitespace-nowrap';
+                }
+            }
+
+            if (!window.isAuthorizedEditor()) {
+                window.isReadMode = true;
+                if (modeToggleBtn) modeToggleBtn.classList.add('opacity-60');
+                if (undoRedoGroup) undoRedoGroup.classList.add('hidden');
+                if (sheetBtn) sheetBtn.classList.add('hidden');
+            } else {
+                if (modeToggleBtn) modeToggleBtn.classList.remove('opacity-60');
+                if (undoRedoGroup) undoRedoGroup.classList.remove('hidden');
+                if (sheetBtn) sheetBtn.classList.remove('hidden');
+            }
+
+            window.syncModeButtonUI();
+            if (window.lucide) lucide.createIcons();
+        };
+
+        window.handleGoogleAuthClick = async function() {
+            if (!auth) {
+                window.showInfoNotice('Firebase niet gereed', 'De authenticatieservice is nog niet geïnitialiseerd.');
+                return;
+            }
+            if (auth.currentUser) {
+                try {
+                    await signOut(auth);
+                } catch (err) {
+                    console.error('Uitloggen mislukt:', err);
+                    window.showInfoNotice('Uitloggen mislukt', err.message || 'Er trad een fout op bij het uitloggen.');
+                }
+            } else {
+                try {
+                    const provider = new GoogleAuthProvider();
+                    provider.setCustomParameters({ prompt: 'select_account' });
+                    const result = await signInWithPopup(auth, provider);
+                    if (result.user && result.user.email && result.user.email.toLowerCase() !== AUTHORIZED_EMAIL) {
+                        window.showInfoNotice(
+                            'Alleen leesrechten',
+                            `Je bent ingelogd als ${result.user.email}. Alleen ${AUTHORIZED_EMAIL} heeft rechten om de database te bewerken en op te slaan.`
+                        );
+                    }
+                } catch (err) {
+                    if (err && err.code !== 'auth/popup-closed-by-user') {
+                        if (err.code === 'auth/unauthorized-domain') {
+                            const currentHost = window.location.hostname || '(onbekend domein)';
+                            console.warn('Domein nog niet geautoriseerd in Firebase Authentication:', currentHost);
+                            window.showInfoNotice(
+                                'Domein niet geautoriseerd',
+                                `Het domein "${currentHost}" is nog niet toegestaan in Firebase Authentication. Voeg "${currentHost}" toe in de Firebase Console onder Authentication > Settings > Authorized domains.`
+                            );
+                        } else {
+                            console.error('Inloggen mislukt:', err);
+                            window.showInfoNotice('Inloggen mislukt', err.message || 'Kon niet inloggen met Google.');
+                        }
+                    }
+                }
+            }
+        };
 
         window.bloomMonths = ['Alle', 'Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
         window.selectedBloomMonthIndex = 0;
@@ -516,6 +647,10 @@
 
         window.togglePlantOrdered = function(plantId, event) {
             if (event) event.stopPropagation();
+            if (!window.isAuthorizedEditor()) {
+                window.showInfoNotice('Alleen-lezen modus', `Log eerst in met ${AUTHORIZED_EMAIL} om wijzigingen op te slaan.`);
+                return;
+            }
             window.pushStateToUndo();
             const plant = window.allPlants.find(p => String(p.id) === String(plantId));
             if (plant) {
@@ -602,7 +737,9 @@
         window.toggleSidebar = function() {
             window.isSidebarCollapsed = !window.isSidebarCollapsed;
             window.updateSidebarUI();
-            window.saveState();
+            if (window.isAuthorizedEditor()) {
+                window.saveState();
+            }
         };
 
         window.updateSidebarUI = function() {
@@ -641,7 +778,9 @@
                 }
             }
             if (window.lucide) lucide.createIcons();
-            window.saveState();
+            if (window.isAuthorizedEditor()) {
+                window.saveState();
+            }
         };
 
         window.getPlantColorStyle = function(colorName) {
@@ -722,6 +861,10 @@
         };
 
         window.undo = function() {
+            if (!window.isAuthorizedEditor()) {
+                window.showInfoNotice('Alleen-lezen modus', `Log eerst in met ${AUTHORIZED_EMAIL} om bewerkingen uit te voeren.`);
+                return;
+            }
             if (window.undoStack.length === 0) return;
             const currentState = {
                 allPlants: JSON.parse(JSON.stringify(window.allPlants)),
@@ -743,6 +886,10 @@
         };
 
         window.redo = function() {
+            if (!window.isAuthorizedEditor()) {
+                window.showInfoNotice('Alleen-lezen modus', `Log eerst in met ${AUTHORIZED_EMAIL} om bewerkingen uit te voeren.`);
+                return;
+            }
             if (window.redoStack.length === 0) return;
             const currentState = {
                 allPlants: JSON.parse(JSON.stringify(window.allPlants)),
@@ -795,16 +942,23 @@
 
             statusTextEl.innerText = text;
             if (status === 'synced') {
-                statusEl.className = 'flex items-center space-x-1.5 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200';
-                statusEl.innerHTML = '<i data-lucide="cloud" class="w-3.5 h-3.5"></i><span id="cloud-status-text">Verbonden</span>';
+                statusEl.className = 'flex items-center space-x-1.5 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200 flex-shrink-0';
+                statusEl.innerHTML = `<i data-lucide="cloud" class="w-3.5 h-3.5"></i><span id="cloud-status-text">${text}</span>`;
             } else {
-                statusEl.className = 'flex items-center space-x-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200';
-                statusEl.innerHTML = '<i data-lucide="cloud-off" class="w-3.5 h-3.5"></i><span id="cloud-status-text">Lokaal</span>';
+                statusEl.className = 'flex items-center space-x-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200 flex-shrink-0';
+                statusEl.innerHTML = `<i data-lucide="cloud-off" class="w-3.5 h-3.5"></i><span id="cloud-status-text">${text}</span>`;
             }
             if (window.lucide) lucide.createIcons();
         };
 
         window.saveState = function() {
+            if (!window.isAuthorizedEditor()) {
+                window.showInfoNotice(
+                    'Opslaan geblokkeerd',
+                    `Je bent niet ingelogd als ${AUTHORIZED_EMAIL}. Wijzigingen worden niet opgeslagen in de database.`
+                );
+                return;
+            }
             if (db && isCloudConnected) {
                 const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
                 setDoc(stateDocRef, {
@@ -816,6 +970,7 @@
                     updatedAt: new Date().toISOString()
                 }, { merge: true }).catch(err => {
                     console.warn("Cloud save warning:", err);
+                    window.showInfoNotice('Fout bij opslaan', 'De wijziging kon niet worden opgeslagen in Firebase: ' + (err.message || err));
                 });
             }
         };
@@ -904,18 +1059,22 @@
                         }
                         if (confirmBtn) confirmBtn.disabled = false;
                     } else {
-                        alert('Geen planten gevonden in de CSV.');
+                        window.showInfoNotice('Geen gegevens', 'Geen planten gevonden in de CSV.');
                     }
                 },
                 error: function(err) {
                     if (statusEl) statusEl.classList.add('hidden');
                     console.error("Sheet parse error:", err);
-                    alert('Fout bij het ophalen van het Google Sheet.');
+                    window.showInfoNotice('Fout bij ophalen', 'Fout bij het ophalen van het Google Sheet.');
                 }
             });
         };
 
         window.executeCsvImport = function() {
+            if (!window.isAuthorizedEditor()) {
+                window.showInfoNotice('Alleen-lezen modus', `Log eerst in met ${AUTHORIZED_EMAIL} om te importeren en op te slaan.`);
+                return;
+            }
             if (!parsedCsvPlants || parsedCsvPlants.length === 0) return;
             window.pushStateToUndo();
             window.allPlants = parsedCsvPlants;
@@ -970,10 +1129,7 @@
             window.updateCanvasTransform();
         };
 
-        window.toggleAppMode = function() {
-            window.isReadMode = !window.isReadMode;
-            window.saveState();
-            
+        window.syncModeButtonUI = function() {
             const modeText = document.getElementById('mode-text');
             const modeIcon = document.getElementById('mode-icon');
             const modeToggleBtn = document.getElementById('btn-mode-toggle');
@@ -985,7 +1141,7 @@
                     modeIcon.style.color = '#348b5e';
                 }
                 if (modeToggleBtn) {
-                    modeToggleBtn.className = 'px-3 py-1.5 bg-botanic-50 hover:bg-botanic-100 text-botanic-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-botanic-200';
+                    modeToggleBtn.className = 'px-3 py-1.5 bg-botanic-50 hover:bg-botanic-100 text-botanic-800 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-botanic-200 flex-shrink-0 whitespace-nowrap' + (!window.isAuthorizedEditor() ? ' opacity-60' : '');
                 }
             } else {
                 if (modeText) modeText.innerText = 'Bewerken';
@@ -994,10 +1150,28 @@
                     modeIcon.style.color = '#286f4c';
                 }
                 if (modeToggleBtn) {
-                    modeToggleBtn.className = 'px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200';
+                    modeToggleBtn.className = 'px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 border border-slate-200 flex-shrink-0 whitespace-nowrap';
                 }
             }
+        };
+
+        window.toggleAppMode = function() {
+            if (!window.isAuthorizedEditor()) {
+                window.isReadMode = true;
+                window.syncModeButtonUI();
+                if (window.lucide) lucide.createIcons();
+                window.showInfoNotice(
+                    'Inloggen vereist',
+                    `Log eerst in met ${AUTHORIZED_EMAIL} via de knop 'Inloggen' rechtsboven om over te schakelen naar de bewerkmodus.`
+                );
+                return;
+            }
+
+            window.isReadMode = !window.isReadMode;
+            window.saveState();
+            window.syncModeButtonUI();
             window.filterPlants();
+            window.renderReserveList();
             window.renderDesignerCanvas();
             if (window.lucide) lucide.createIcons();
         };
@@ -1028,7 +1202,7 @@
         };
 
         window.initZoneDrag = function(e, zoneId) {
-            if (window.isReadMode) return;
+            if (window.isReadMode || !window.isAuthorizedEditor()) return;
             e.stopPropagation();
             e.preventDefault();
             window.isPanning = false;
@@ -1043,7 +1217,7 @@
         };
 
         window.initZoneResize = function(e, zoneId, handleType) {
-            if (window.isReadMode) return;
+            if (window.isReadMode || !window.isAuthorizedEditor()) return;
             e.stopPropagation();
             e.preventDefault();
             window.isPanning = false;
@@ -1056,7 +1230,7 @@
         };
 
         window.initPlantDrag = function(e, zoneId, instanceId) {
-            if (window.isReadMode) {
+            if (window.isReadMode || !window.isAuthorizedEditor()) {
                 e.stopPropagation();
                 const zone = window.zones.find(z => z.id === zoneId);
                 const plantInst = zone?.plants.find(p => p.instanceId === instanceId);
@@ -1252,7 +1426,7 @@
                 }
 
                 const distMoved = Math.hypot(e.clientX - window.dragStartX, e.clientY - window.dragStartY);
-                if (distMoved > 5 && activeCatalogDragPlant) {
+                if (distMoved > 5 && activeCatalogDragPlant && window.isAuthorizedEditor()) {
                     window.pushStateToUndo();
                     const canvasMouseX = (e.clientX - window.panX) / window.scale;
                     const canvasMouseY = (e.clientY - window.panY) / window.scale;
@@ -1313,11 +1487,14 @@
                     }
                 }
 
+                const hadActiveDrag = !!window.dragType;
                 if (window.isPanning || window.dragType) {
                     window.isPanning = false;
                     window.dragType = null;
                     window.dragTarget = null;
-                    window.saveState();
+                    if (hadActiveDrag && window.isAuthorizedEditor()) {
+                        window.saveState();
+                    }
                     window.renderDesignerCanvas();
                 }
             });
@@ -1443,7 +1620,7 @@
         };
 
         window.initCatalogDrag = function(e, plantId) {
-            if (window.isReadMode) return;
+            if (window.isReadMode || !window.isAuthorizedEditor()) return;
             e.stopPropagation();
             const plant = window.allPlants.find(p => String(p.id) === String(plantId));
             if (!plant) return;
@@ -1520,7 +1697,7 @@
                 const colStyle = window.getPlantColorStyle(plant.color);
                 const nurseryTag = plant.nursery ? ` • Kweker: ${plant.nursery}` : '';
 
-                const actionButtonsHtml = window.isReadMode ? '' : `
+                const actionButtonsHtml = (window.isReadMode || !window.isAuthorizedEditor()) ? '' : `
                     <div class="flex items-center space-x-1 flex-shrink-0" onmousedown="event.stopPropagation()">
                         <button onclick="window.deletePlantDefinition('${plant.id}')" class="p-1 hover:bg-red-100 rounded text-red-500 hover:text-red-700 transition" title="Verwijderen">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -1529,9 +1706,9 @@
                 `;
 
                 return `
-                    <div class="border border-slate-200 bg-white hover:border-botanic-600 rounded-xl p-2.5 transition flex items-center justify-between group ${window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}"
-                         ${window.isReadMode ? `onclick="window.openPlantDetail('${plant.id}')"` : `onmousedown="window.initCatalogDrag(event, '${plant.id}')"`}>
-                        <div class="flex items-center space-x-2.5 truncate" onclick="if(${window.isReadMode} || Math.hypot(event.clientX - window.dragStartX, event.clientY - window.dragStartY) < 5) window.openPlantDetail('${plant.id}')">
+                    <div class="border border-slate-200 bg-white hover:border-botanic-600 rounded-xl p-2.5 transition flex items-center justify-between group ${(window.isReadMode || !window.isAuthorizedEditor()) ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}"
+                         ${(window.isReadMode || !window.isAuthorizedEditor()) ? `onclick="window.openPlantDetail('${plant.id}')"` : `onmousedown="window.initCatalogDrag(event, '${plant.id}')"`}>
+                        <div class="flex items-center space-x-2.5 truncate" onclick="if(${window.isReadMode || !window.isAuthorizedEditor()} || Math.hypot(event.clientX - window.dragStartX, event.clientY - window.dragStartY) < 5) window.openPlantDetail('${plant.id}')">
                             <div class="w-4 h-4 rounded-full flex-shrink-0 border shadow-sm" style="background-color: ${colStyle.bg}; border-color: ${colStyle.border};"></div>
                             <div class="truncate">
                                 <p class="font-bold text-slate-800 text-xs truncate">${plant.name}</p>
@@ -1571,7 +1748,7 @@
                 const nurseryTag = plant.nursery ? ` • Kweker: ${plant.nursery}` : '';
                 const isOrdered = plant.ordered === true;
 
-                const actionButtonsHtml = window.isReadMode ? '' : `
+                const actionButtonsHtml = (window.isReadMode || !window.isAuthorizedEditor()) ? '' : `
                     <div class="flex items-center space-x-1 flex-shrink-0" onmousedown="event.stopPropagation()">
                         <button onclick="window.deletePlantDefinition('${plant.id}')" class="p-1 hover:bg-red-100 rounded text-red-500 hover:text-red-700 transition" title="Verwijderen">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -1580,9 +1757,9 @@
                 `;
 
                 return `
-                    <div class="border ${isOrdered ? 'border-emerald-300 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/40'} hover:border-amber-400 rounded-xl p-2.5 transition flex items-center justify-between group ${window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}"
-                         ${window.isReadMode ? `onclick="window.openPlantDetail('${plant.id}')"` : `onmousedown="window.initCatalogDrag(event, '${plant.id}')"`}>
-                        <div class="flex items-center space-x-2.5 truncate" onclick="if(${window.isReadMode} || Math.hypot(event.clientX - window.dragStartX, event.clientY - window.dragStartY) < 5) window.openPlantDetail('${plant.id}')">
+                    <div class="border ${isOrdered ? 'border-emerald-300 bg-emerald-50/40' : 'border-amber-200 bg-amber-50/40'} hover:border-amber-400 rounded-xl p-2.5 transition flex items-center justify-between group ${(window.isReadMode || !window.isAuthorizedEditor()) ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}"
+                         ${(window.isReadMode || !window.isAuthorizedEditor()) ? `onclick="window.openPlantDetail('${plant.id}')"` : `onmousedown="window.initCatalogDrag(event, '${plant.id}')"`}>
+                        <div class="flex items-center space-x-2.5 truncate" onclick="if(${window.isReadMode || !window.isAuthorizedEditor()} || Math.hypot(event.clientX - window.dragStartX, event.clientY - window.dragStartY) < 5) window.openPlantDetail('${plant.id}')">
                             <button onclick="window.togglePlantOrdered('${plant.id}', event)" class="w-5 h-5 rounded-lg border ${isOrdered ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-300 hover:border-amber-500'} flex items-center justify-center transition flex-shrink-0 shadow-sm" title="${isOrdered ? 'Besteld / Gekocht (klik om ongedaan te maken)' : 'Zet vinkje als besteld'}">
                                 ${isOrdered ? '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
                             </button>
@@ -1609,7 +1786,8 @@
                 if (!zone.visible) return;
                 const isSelected = window.selectedZoneId === zone.id;
                 const borderClass = isSelected ? 'border-2 border-botanic-600 shadow-2xl ring-2 ring-botanic-200' : 'border border-slate-300 shadow-lg';
-                const zoneHeaderCursor = window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing hover:bg-slate-100';
+                const canEdit = !window.isReadMode && window.isAuthorizedEditor();
+                const zoneHeaderCursor = !canEdit ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing hover:bg-slate-100';
 
                 html += `
                     <div class="garden-zone-box absolute rounded-2xl ${zone.color} ${borderClass} transition-shadow flex flex-col overflow-visible select-none cursor-pointer"
@@ -1618,7 +1796,7 @@
                          style="left: ${zone.x}px; top: ${zone.y}px; width: ${zone.w}px; height: ${zone.h}px;">
                          
                         <div class="zone-header-bar bg-white/95 backdrop-blur-sm px-3.5 py-2 border-b border-slate-200 flex items-center justify-between ${zoneHeaderCursor} transition z-20 rounded-t-2xl"
-                             ${window.isReadMode ? '' : `onmousedown="window.initZoneDrag(event, '${zone.id}')"`}>
+                             ${!canEdit ? '' : `onmousedown="window.initZoneDrag(event, '${zone.id}')"`}>
                             <div class="flex items-center space-x-2 truncate pointer-events-none">
                                 <span class="font-bold text-slate-800 text-xs truncate">${zone.name}</span>
                                 <span class="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">${zone.plants.length}</span>
@@ -1646,8 +1824,7 @@
                     const borderStyle = isNotOwned ? 'border-dashed border-2 opacity-95' : 'border-2';
                     const ownedBadge = isNotOwned ? `<span class="absolute -top-1.5 -right-1.5 bg-amber-500 text-white rounded-full w-4 h-4 text-[10px] flex items-center justify-center shadow-md pointer-events-none z-30" title="Moet nog gekocht worden"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>` : '';
 
-                    const plantCursorClass = window.isReadMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing';
-                    const plantMouseDownAttr = `onmousedown="window.initPlantDrag(event, '${zone.id}', '${plantInst.instanceId}')" onclick="event.stopPropagation(); window.openPlantDetail('${plantData.id}', '${zone.id}', '${plantInst.instanceId}')"`;
+                    const plantCursorClass = !canEdit ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing';
 
                     html += `
                         <div class="plant-dot absolute group ${plantCursorClass} ${bloomGlowClass} rounded-full flex items-center justify-center transition-transform hover:scale-125 z-10 hover:z-50 pointer-events-auto"
@@ -1675,7 +1852,7 @@
                     `;
                 });
 
-                if (!window.isReadMode) {
+                if (canEdit) {
                     html += `
                         <div class="zone-edge-handle edge-n" onmousedown="window.initZoneResize(event, '${zone.id}', 'n')" title="Sleep bovenzijde"></div>
                         <div class="zone-edge-handle edge-s" onmousedown="window.initZoneResize(event, '${zone.id}', 's')" title="Sleep onderzijde"></div>
@@ -1714,7 +1891,7 @@
 
             let imgUrl = window.getPlantImageUrl(plant);
 
-            if (!plant.image) {
+            if (!plant.image && window.isAuthorizedEditor()) {
                 window.extractImageFromUrl(plant).then(extractedImg => {
                     if (extractedImg) {
                         plant.image = extractedImg;
@@ -1751,7 +1928,7 @@
                 </div>
             `;
 
-            if (!window.isReadMode && zoneId && instanceId) {
+            if (!window.isReadMode && window.isAuthorizedEditor() && zoneId && instanceId) {
                 window.activeModalPlantInstance = { zoneId, instanceId };
                 const zone = window.zones.find(z => z.id === zoneId);
                 const inst = zone?.plants.find(p => p.instanceId === instanceId);
@@ -1768,7 +1945,7 @@
                 `;
             } else {
                 window.activeModalPlantInstance = null;
-                sizeContainerEl.innerHTML = `<span class="text-slate-400 italic text-center">${window.isReadMode ? 'Schakel over naar bewerkmodus om de plantgrootte aan te passen' : 'Open een plant vanaf de tuinkaart om de grootte aan te passen'}</span>`;
+                sizeContainerEl.innerHTML = `<span class="text-slate-400 italic text-center">${!window.isAuthorizedEditor() ? `Log in als ${AUTHORIZED_EMAIL} en schakel bewerkmodus in om te wijzigen` : (window.isReadMode ? 'Schakel over naar bewerkmodus om de plantgrootte aan te passen' : 'Open een plant vanaf de tuinkaart om de grootte aan te passen')}</span>`;
             }
 
             const modal = document.getElementById('plant-detail-modal');
@@ -1793,6 +1970,10 @@
         };
 
         window.updateModalPlantSize = function(zoneId, instanceId, newSize) {
+            if (!window.isAuthorizedEditor()) {
+                window.showInfoNotice('Alleen-lezen modus', `Log eerst in met ${AUTHORIZED_EMAIL} om de grootte op te slaan.`);
+                return;
+            }
             const sizeVal = document.getElementById('modal-size-val');
             if (sizeVal) sizeVal.innerText = `${newSize}px`;
 
@@ -1806,6 +1987,10 @@
         };
 
         window.openCsvImportModal = function() {
+            if (!window.isAuthorizedEditor()) {
+                window.showInfoNotice('Inloggen vereist', `Log eerst in met ${AUTHORIZED_EMAIL} om gegevens te kunnen importeren.`);
+                return;
+            }
             const modal = document.getElementById('csv-import-modal');
             if (modal) modal.classList.remove('hidden');
             if (window.lucide) lucide.createIcons();
@@ -1819,6 +2004,10 @@
         window.pendingDeleteTarget = null;
 
         window.deletePlantDefinition = function(plantId) {
+            if (!window.isAuthorizedEditor()) {
+                window.showInfoNotice('Inloggen vereist', `Log eerst in met ${AUTHORIZED_EMAIL} om planten te verwijderen.`);
+                return;
+            }
             const plant = window.allPlants.find(p => String(p.id) === String(plantId));
             if (!plant) return;
 
@@ -1844,6 +2033,10 @@
         };
 
         window.executePendingDelete = function() {
+            if (!window.isAuthorizedEditor()) {
+                window.showInfoNotice('Inloggen vereist', `Log eerst in met ${AUTHORIZED_EMAIL} om wijzigingen op te slaan.`);
+                return;
+            }
             if (!window.pendingDeleteTarget) return;
 
             window.pushStateToUndo();
@@ -1887,43 +2080,48 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                signInAnonymously(auth).then(() => {
+                // Luister naar de Google-authenticatiestatus (vervangt signInAnonymously)
+                onAuthStateChanged(auth, (user) => {
+                    window.updateAuthUI(user);
+                    window.filterPlants();
+                    window.renderReserveList();
+                    window.renderDesignerCanvas();
+                });
+
+                // Real-time Firestore listener voor iedereen (ook in leesmodus zonder inloggen)
+                const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
+                onSnapshot(stateDocRef, (docSnap) => {
                     isCloudConnected = true;
                     window.updateCloudStatus('synced', 'Verbonden');
 
-                    const stateDocRef = doc(db, 'tuinontwerpen', 'hoofd_tuinkaart');
-                    onSnapshot(stateDocRef, (docSnap) => {
-                        if (docSnap.exists()) {
-                            const data = docSnap.data();
-                            if (data.allPlants) window.allPlants = data.allPlants;
-                            if (data.zones) window.zones = data.zones;
-                            if (data.isSidebarCollapsed !== undefined) window.isSidebarCollapsed = data.isSidebarCollapsed;
-                            if (data.isReadMode !== undefined) window.isReadMode = data.isReadMode;
-                            if (data.areFiltersCollapsed !== undefined) window.areFiltersCollapsed = data.areFiltersCollapsed;
-
-                            window.syncPlantsWithZones();
-                            window.updateSidebarUI();
-                            window.populateFilterDropdowns();
-                            window.filterPlants();
-                            window.renderReserveList();
-                            window.renderDesignerCanvas();
-                        } else {
-                            window.syncPlantsWithZones();
-                            window.populateFilterDropdowns();
-                            window.filterPlants();
-                            window.renderReserveList();
-                            window.renderDesignerCanvas();
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if (data.allPlants) window.allPlants = data.allPlants;
+                        if (data.zones) window.zones = data.zones;
+                        if (data.isSidebarCollapsed !== undefined) window.isSidebarCollapsed = data.isSidebarCollapsed;
+                        if (data.areFiltersCollapsed !== undefined) window.areFiltersCollapsed = data.areFiltersCollapsed;
+                        if (data.isReadMode !== undefined && window.isAuthorizedEditor()) {
+                            window.isReadMode = data.isReadMode;
+                        } else if (!window.isAuthorizedEditor()) {
+                            window.isReadMode = true;
                         }
-                    }, () => {
-                        isCloudConnected = false;
-                        window.updateCloudStatus('local', 'Lokaal');
+
+                        window.syncModeButtonUI();
+                        window.syncPlantsWithZones();
+                        window.updateSidebarUI();
+                        window.populateFilterDropdowns();
+                        window.filterPlants();
+                        window.renderReserveList();
+                        window.renderDesignerCanvas();
+                    } else {
                         window.syncPlantsWithZones();
                         window.populateFilterDropdowns();
                         window.filterPlants();
                         window.renderReserveList();
                         window.renderDesignerCanvas();
-                    });
-                }).catch(() => {
+                    }
+                }, (err) => {
+                    console.warn("Firestore snapshot fout:", err);
                     isCloudConnected = false;
                     window.updateCloudStatus('local', 'Lokaal');
                     window.syncPlantsWithZones();
@@ -1936,6 +2134,7 @@
                 console.warn("Firebase Init fallback naar lokaal:", err);
                 isCloudConnected = false;
                 window.updateCloudStatus('local', 'Lokaal');
+                window.updateAuthUI(null);
                 window.syncPlantsWithZones();
                 window.populateFilterDropdowns();
                 window.filterPlants();
